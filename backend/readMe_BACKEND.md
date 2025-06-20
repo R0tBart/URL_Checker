@@ -44,7 +44,7 @@ Der Server wird standardmäßig auf Port 8000 gestartet.
 
 + Methode: `POST`
 
-+ **Beschreibung:** Überprüft eine Liste von URLs und gibt detaillierte Informationen zurück.
+  **Beschreibung:** Überprüft eine Liste von URLs und gibt detaillierte Informationen zurück.
 
 
 + Anfrage-Header: `Content-Type: application/json`
