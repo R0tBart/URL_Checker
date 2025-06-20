@@ -1,4 +1,4 @@
-### Projekt: Multi-URL Checker Dashboard
+# Multi-URL Checker Dashboard
 
 Ein Tool zum gleichzeitigen Überprüfen vieler URLs über ein Web-Frontend. Ideal für SEO-Checks, Systemadministration oder Webmonitoring. Unterstützt Statuscode-Analyse, SSL-Validierung, Ladezeitmessung und DNS-Auflösung.
 
@@ -10,24 +10,27 @@ Ein Tool zum gleichzeitigen Überprüfen vieler URLs über ein Web-Frontend. Ide
 - SSL-Zertifikats-Check (gültig oder nicht)
 - Redirect-Erkennung
 - DNS/IP-Auflösung
-- REST API via FastAPI
-- Asynchrone parallele URL-Überprüfung mit `aiohttp`
+- REST API via Express (Node.js)
+- Parallele URL-Überprüfung mit Axios
 
 ---
 
 ## 🧰 Techstack
 
-### Backend
-- **Python 3.10+**
-- **FastAPI** – schnelles API-Framework
-- **aiohttp** – asynchrone HTTP-Requests
-- **uvicorn** – ASGI Server
-- **ssl** / **socket** – Zertifikatsprüfung & IP-Auflösung
+### Backend ( Chris )
+- **Node.js 18+ (getestet mit Node.js 24)**
+- **Express** – schnelles API-Framework
+- **Axios 1.5.1** – HTTP-Requests
+- **dns/tls** (Node.js built-in) – Zertifikatsprüfung & IP-Auflösung
+- **dotenv** – Umgebungsvariablen
 
-### Frontend (optional)
+### Frontend ( Phil )
 - HTML5 + CSS3 + Vanilla JavaScript
 - Optional: Bootstrap/TailwindCSS für UI
 - Optional: DataTables.js, Chart.js
+
+### 📦 Test-API ( Ralf )
+
 
 ---
 
@@ -36,21 +39,19 @@ Ein Tool zum gleichzeitigen Überprüfen vieler URLs über ein Web-Frontend. Ide
 ### 🔁 Klonen:
 ```bash
 git clone https://github.com/dein-user/url-checker.git
-cd url-checker
+cd url-checker/backend
 ```
 
-### 📦 Python-Abhängigkeiten installieren:
+### 📦 Node.js-Abhängigkeiten installieren:
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install fastapi aiohttp uvicorn
+npm install
 ```
 
 ---
 
 ## 🚀 Starten des Backends
 ```bash
-uvicorn backend.main:app --reload
+npm run dev
 ```
 Die API ist dann erreichbar unter: `http://localhost:8000/check-urls`
 
@@ -92,69 +93,28 @@ Die API ist dann erreichbar unter: `http://localhost:8000/check-urls`
 
 ---
 
-## 👥 Team-Aufteilung
-
-### 🔧 Chris – Backend-Entwicklung
-**Ziel:** Eine stabile, asynchrone REST API zur URL-Prüfung
-
-#### Aufgaben im Detail:
-- FastAPI-Grundgerüst mit `/check-urls`-Route implementieren
-- Empfang der URL-Liste über POST und Validierung mit `pydantic`
-- Parallele Verarbeitung mit `asyncio.gather()`
-- `aiohttp`-GET-Requests mit SSL-Validierung und Timeout absichern
-- DNS/IP-Auflösung mit `socket.gethostbyname()` integrieren
-- Fehlerbehandlung für ungültige URLs, DNS-Fehler, SSL-Fehler
-- Statuscode, Ladezeit und Redirect-Erkennung zurückgeben
-- Rückgabe als standardisierte JSON-Liste
-- (Optional) Logging bei Fehlern einbauen
-- (Optional) Unit-Tests mit `pytest` schreiben
-
-### 🎨 Phil – Frontend-Entwicklung
-**Ziel:** Einfache, funktionale UI zum Prüfen und Anzeigen der Ergebnisse
-
-#### Aufgaben im Detail:
-- HTML-Formular mit Textarea für URL-Eingabe
-- Button „Check starten“ mit JS-Eventlistener
-- `fetch()`-POST an `/check-urls` mit JSON-Body
-- Ergebnisse auslesen und in HTML-Tabelle darstellen
-- Farbcode für Status (200 = grün, 400/500 = rot, 3xx = gelb)
-- Loading-Symbol während der Anfrage einblenden
-- Validierung der Eingabe (z. B. leere Felder)
-- (Optional) responsives Layout mit Bootstrap oder Tailwind
-- (Optional) Fehlermeldungen bei API-Ausfällen darstellen
-
-### 📊 Ralf – Logik & Extras
-**Ziel:** Erweiterte Funktionalität und Analyse
-
-#### Aufgaben im Detail:
-- Exportfunktion (CSV-Export) implementieren
-- Statistikmodul: Gesamtanzahl, wie viele OK, wie viele Redirects/Fehler
-- Balkendiagramm zur Statuscode-Verteilung mit Chart.js
-- (Optional) GeoIP-Lokalisierung per externem API (z. B. ipinfo.io)
-- (Optional) Screenshot-Funktion vorbereiten mit `playwright`
-- Performanceoptimierung (z. B. Ergebnis-Caching für Duplikate)
-
----
-
 ## 📦 Beispiel-Dateistruktur
 ```
 url-checker/
 ├── backend/
-│   └── main.py
+│   ├── index.js
+│   ├── utils.js
+│   ├── package.json
+│   └── .env         # optional, für Umgebungsvariablen
 ├── frontend/
 │   ├── index.html
-│   └── script.js
-├── requirements.txt
+│   └── scripts.js
 └── README.md
 ```
 
 ---
 
 ## 🔒 Hinweise / Sicherheit
-- CORS beachten, wenn Frontend separat gehostet wird
+- CORS beachten, wenn Frontend separat gehostet wird (Express-Konfiguration ggf. anpassen)
 - SSL-Checks sind limitiert bei bestimmten Redirects (z. B. HTTP → HTTPS)
-- Kein Request-Timeout gesetzt – ggf. bei produktivem Einsatz ergänzen
+- Request-Timeout ist gesetzt (5 Sekunden) – ggf. anpassen
 - API-Ratelimit bei öffentlichem Hosting bedenken
+- `.env`-Datei ist in `.gitignore` eingetragen
 
 ---
 
