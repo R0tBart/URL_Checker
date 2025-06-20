@@ -1,3 +1,6 @@
+![logo](./backend/images/layer8.png)
+
+
 # Multi-URL Checker Dashboard
 
 Ein Tool zum gleichzeitigen Überprüfen mehrer URLs über ein Web-Frontend. Ideal für SEO-Checks, Systemadministration oder Webmonitoring. Unterstützt Statuscode-Analyse, SSL-Validierung, Ladezeitmessung und DNS-Auflösung.
