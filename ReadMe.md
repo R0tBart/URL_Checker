@@ -1,4 +1,4 @@
-# Projekt: Multi-URL Checker Dashboard
+# Multi-URL Checker Dashboard
 
 Ein Tool zum gleichzeitigen Überprüfen vieler URLs über ein Web-Frontend. Ideal für SEO-Checks, Systemadministration oder Webmonitoring. Unterstützt Statuscode-Analyse, SSL-Validierung, Ladezeitmessung und DNS-Auflösung.
 
@@ -17,17 +17,20 @@ Ein Tool zum gleichzeitigen Überprüfen vieler URLs über ein Web-Frontend. Ide
 
 ## 🧰 Techstack
 
-### Backend (Chris)
-- **Node.js 18+**
+### Backend ( Chris )
+- **Node.js 18+ (getestet mit Node.js 24)**
 - **Express** – schnelles API-Framework
-- **Axios** – HTTP-Requests
+- **Axios 1.5.1** – HTTP-Requests
 - **dns/tls** (Node.js built-in) – Zertifikatsprüfung & IP-Auflösung
 - **dotenv** – Umgebungsvariablen
 
-### Frontend (Phil)
+### Frontend ( Phil )
 - HTML5 + CSS3 + Vanilla JavaScript
 - Optional: Bootstrap/TailwindCSS für UI
 - Optional: DataTables.js, Chart.js
+
+### 📦 Test-API ( Ralf )
+
 
 ---
 

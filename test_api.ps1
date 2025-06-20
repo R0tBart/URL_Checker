@@ -17,9 +17,9 @@ try {
         -ContentType "application/json"
 
     # Ergebnis ausgeben
-    if ($response -is [System.Array]) {
+    if ($response.results -is [System.Array]) {
         Write-Host "`n✅ Backend-Antwort OK:"
-        foreach ($item in $response) {
+        foreach ($item in $response.results) {
             Write-Host "URL:" $item.url
             Write-Host "  Status:" $item.status_code
             Write-Host "  Ladezeit:" $item.response_time "ms"

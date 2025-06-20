@@ -4,8 +4,9 @@
   "description": "Ein Tool zum gleichzeitigen Überprüfen vieler URLs über ein Web-Frontend. Ideal für SEO-Checks, Systemadministration oder Webmonitoring. Unterstützt Statuscode-Analyse, SSL-Validierung, Ladezeitmessung und DNS-Auflösung.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev" : "node index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
@@ -20,8 +21,10 @@
   },
   "homepage": "https://github.com/R0tBart/URL_Checker#readme",
   "dependencies": {
-    "axios": "^1.10.0",
+    "axios": "1.5.1",
     "dotenv": "^16.5.0",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "cors": "^2.8.5",
+    "nodemon": "3.1.10"
   }
 }
