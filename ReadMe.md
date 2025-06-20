@@ -92,7 +92,7 @@ Die API ist dann erreichbar unter: `http://localhost:8000/check-urls`
 
 ---
 
-## 👥 Team-Aufteilung (ausgearbeitet für 3 Personen)
+## 👥 Team-Aufteilung
 
 ### 🔧 Chris – Backend-Entwicklung
 **Ziel:** Eine stabile, asynchrone REST API zur URL-Prüfung
