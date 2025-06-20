@@ -1,14 +1,15 @@
 // backend/utils.js
-const axios = require('axios'); // Importiert die Axios-Bibliothek für HTTP-Anfragen
-const dns = require('dns').promises; // Importiert das DNS-Modul für die Namensauflösung (Promise-basiert)
-const tls = require('tls'); // Importiert das TLS-Modul für die SSL-Zertifikatprüfung
-const { URL } = require('url'); // Importiert die URL-Klasse zum Parsen von URLs
+const axios = require('axios');        // Importiert die Axios-Bibliothek für HTTP-Anfragen
+const dns = require('dns').promises;   // Importiert das DNS-Modul für die Namensauflösung (Promise-basiert)
+const tls = require('tls');            // Importiert das TLS-Modul für die SSL-Zertifikatprüfung
+const { URL } = require('url');        // Importiert die URL-Klasse zum Parsen von URLs
+const { performance } = require('perf_hooks'); // Importiert performance von perf_hooks für Zeitmessungen
 
 // Hilfsfunktion zur IP-Auflösung eines Hostnamens
 async function resolveIp(hostname) {
   try {
     const result = await dns.lookup(hostname); // Führt eine DNS-Abfrage durch
-    return result.address; // Gibt die aufgelöste IP-Adresse zurück
+    return result.address;                     // Gibt die aufgelöste IP-Adresse zurück
   } catch (err) {
     // Warnt bei fehlgeschlagener DNS-Auflösung und gibt null zurück
     console.warn(`DNS-Auflösung fehlgeschlagen für ${hostname}:`, err.message);
@@ -137,4 +138,12 @@ async function checkUrl(url) {
   }
 }
 
-module.exports = { checkUrl }; // Exportiert die checkUrl-Funktion
+// Hilfsfunktion zur Messung der Ausführungszeit einer asynchronen Funktion
+async function measureExecutionTime(func) {
+  const start = performance.now(); // Startzeitpunkt der Ausführung
+  const result = await func();    // Führt die übergebene Funktion aus
+  const end = performance.now();   // Endzeitpunkt der Ausführung
+  return { result, duration: end - start }; // Gibt das Ergebnis und die Dauer zurück
+}
+
+module.exports = { checkUrl, measureExecutionTime }; // Exportiert checkUrl und measureExecutionTime

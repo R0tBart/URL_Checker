@@ -1,6 +1,6 @@
 # Multi-URL Checker Dashboard
 
-Ein Tool zum gleichzeitigen Überprüfen vieler URLs über ein Web-Frontend. Ideal für SEO-Checks, Systemadministration oder Webmonitoring. Unterstützt Statuscode-Analyse, SSL-Validierung, Ladezeitmessung und DNS-Auflösung.
+Ein Tool zum gleichzeitigen Überprüfen mehrer URLs über ein Web-Frontend. Ideal für SEO-Checks, Systemadministration oder Webmonitoring. Unterstützt Statuscode-Analyse, SSL-Validierung, Ladezeitmessung und DNS-Auflösung.
 
 ---
 
@@ -15,23 +15,46 @@ Ein Tool zum gleichzeitigen Überprüfen vieler URLs über ein Web-Frontend. Ide
 
 ---
 
-## 🧰 Techstack
+# 🧰 Techstack
 
-### Backend ( Chris )
-- **Node.js 18+ (getestet mit Node.js 24)**
-- **Express** – schnelles API-Framework
-- **Axios 1.5.1** – HTTP-Requests
-- **dns/tls** (Node.js built-in) – Zertifikatsprüfung & IP-Auflösung
-- **dotenv** – Umgebungsvariablen
+| Bereich       | Technologie            |
+|--------------|------------------------|
+| Backend       | Node.js, Express, Axios |
+| Frontend      | HTML, CSS, Vanilla JS |
+| Datenvisual.  | Chart.js (optional)    |
+| Tools         | Docker (optional)      |
+---
+---
+# 👥 Team & Aufgaben
 
-### Frontend ( Phil )
-- HTML5 + CSS3 + Vanilla JavaScript
-- Optional: Bootstrap/TailwindCSS für UI
-- Optional: DataTables.js, Chart.js
+## 🔧 Chris – Backend-Entwicklung
 
-### 📦 Test-API ( Ralf )
+- Express API mit POST `/check-urls`
+- HTTP-Requests mit Axios
+- SSL-, Redirect-, DNS-Checks
+- Ladezeitmessung mit `perf_hooks`
+- JSON-Antwort für das Frontend
+--> siehe auch **readme_backend.md** für weitere Details
+
+## 🎨 Phil – Frontend-Entwicklung
+
+- UI mit HTML/CSS/JS
+- Eingabemaske für URLs
+- Fetch → `/check-urls`
+- Darstellung in Tabelle mit Farbcodes
+- Loading-Indikator & Fehlerhandling
+
+## 📊 Ralf – Fullstack & Features
+
+- CSV/PDF-Export
+- Statuscode-Auswertung in Chart.js
+- GeoIP (z. B. via ipinfo.io)
+- Screenshotfunktion (optional mit `playwright`)
+- Dockerisierung & Strukturpflege
 
 
+
+---
 ---
 
 ## 📦 Installation
@@ -93,14 +116,19 @@ Die API ist dann erreichbar unter: `http://localhost:8000/check-urls`
 
 ---
 
-## 📦 Beispiel-Dateistruktur
+## 📦 Dateistruktur
 ```
 url-checker/
 ├── backend/
+|   ├── images/
+|       ├── server_laeuft.png
+|       ├── server_laeuft_NICHT_test.png
+|       └── server_laeuft_test.png
 │   ├── index.js
 │   ├── utils.js
 │   ├── package.json
-│   └── .env         # optional, für Umgebungsvariablen
+|   ├── readMe_BACKEND.md
+│   └── .env         # optional, für Umgebungsvariablen im Moment nicht vorhanden!
 ├── frontend/
 │   ├── index.html
 │   └── scripts.js
