@@ -92,23 +92,47 @@ Die API ist dann erreichbar unter: `http://localhost:8000/check-urls`
 
 ---
 
-## 👥 Team-Aufteilung
+## 👥 Team-Aufteilung (ausgearbeitet für 3 Personen)
 
-### 🔧 Backend @ Chris:
-- API-Entwicklung mit FastAPI
-- asynchrone URL-Checks mit Fehlerbehandlung
-- DNS/IP-Erkennung
+### 🔧 Chris – Backend-Entwicklung
+**Ziel:** Eine stabile, asynchrone REST API zur URL-Prüfung
 
-### 🎨 Frontend @ Phil:
-- UI + JS für API-Aufrufe
-- Darstellung der Ergebnisse (Tabelle, Farben)
-- Benutzerfeedback, Loading-Status
+#### Aufgaben im Detail:
+- FastAPI-Grundgerüst mit `/check-urls`-Route implementieren
+- Empfang der URL-Liste über POST und Validierung mit `pydantic`
+- Parallele Verarbeitung mit `asyncio.gather()`
+- `aiohttp`-GET-Requests mit SSL-Validierung und Timeout absichern
+- DNS/IP-Auflösung mit `socket.gethostbyname()` integrieren
+- Fehlerbehandlung für ungültige URLs, DNS-Fehler, SSL-Fehler
+- Statuscode, Ladezeit und Redirect-Erkennung zurückgeben
+- Rückgabe als standardisierte JSON-Liste
+- (Optional) Logging bei Fehlern einbauen
+- (Optional) Unit-Tests mit `pytest` schreiben
 
-### 📊 Logik/Extras @ Ralf:
-- Exportfunktion (CSV)
-- Statuscode-Statistik
-- Visualisierung mit Chart.js
-- Optional: GeoIP + Screenshot
+### 🎨 Phil – Frontend-Entwicklung
+**Ziel:** Einfache, funktionale UI zum Prüfen und Anzeigen der Ergebnisse
+
+#### Aufgaben im Detail:
+- HTML-Formular mit Textarea für URL-Eingabe
+- Button „Check starten“ mit JS-Eventlistener
+- `fetch()`-POST an `/check-urls` mit JSON-Body
+- Ergebnisse auslesen und in HTML-Tabelle darstellen
+- Farbcode für Status (200 = grün, 400/500 = rot, 3xx = gelb)
+- Loading-Symbol während der Anfrage einblenden
+- Validierung der Eingabe (z. B. leere Felder)
+- (Optional) responsives Layout mit Bootstrap oder Tailwind
+- (Optional) Fehlermeldungen bei API-Ausfällen darstellen
+
+### 📊 Ralf – Logik & Extras
+**Ziel:** Erweiterte Funktionalität und Analyse
+
+#### Aufgaben im Detail:
+- Exportfunktion (CSV-Export) implementieren
+- Statistikmodul: Gesamtanzahl, wie viele OK, wie viele Redirects/Fehler
+- Balkendiagramm zur Statuscode-Verteilung mit Chart.js
+- (Optional) GeoIP-Lokalisierung per externem API (z. B. ipinfo.io)
+- (Optional) Screenshot-Funktion vorbereiten mit `playwright`
+- Performanceoptimierung (z. B. Ergebnis-Caching für Duplikate)
 
 ---
 
@@ -130,6 +154,7 @@ url-checker/
 - CORS beachten, wenn Frontend separat gehostet wird
 - SSL-Checks sind limitiert bei bestimmten Redirects (z. B. HTTP → HTTPS)
 - Kein Request-Timeout gesetzt – ggf. bei produktivem Einsatz ergänzen
+- API-Ratelimit bei öffentlichem Hosting bedenken
 
 ---
 
