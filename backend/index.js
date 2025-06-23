@@ -1,3 +1,8 @@
+// ===============================
+// Express-Backend für den URL-Checker
+// Dieses Backend stellt die API-Endpunkte bereit, um URLs zu prüfen und Ergebnisse an das Frontend zu liefern.
+// ===============================
+
 // Importiert das Express-Framework für die Erstellung des Webservers
 // und die Hilfsfunktion checkUrl aus der utils.js für die URL-Prüfung
 const express = require('express');
@@ -7,8 +12,10 @@ const app = express();
 // Bestimmt den Port, auf dem der Server läuft (aus Umgebungsvariablen oder Standard 8000)
 const PORT = process.env.PORT || 8000;
 
-// Aktiviert CORS (Cross-Origin Resource Sharing), damit Anfragen von beliebigen Domains (z.B. vom Frontend) erlaubt sind
+// ===============================
+// CORS-Middleware: Erlaubt Anfragen von beliebigen Domains (z.B. vom Frontend)
 // Dies ist wichtig, damit das Frontend im Browser mit dem Backend kommunizieren kann
+// ===============================
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -21,17 +28,24 @@ app.use((req, res, next) => {
   }
 });
 
-// Aktiviert das automatische Parsen von JSON-Daten im Request-Body
+// ===============================
+// Middleware: Aktiviert das automatische Parsen von JSON-Daten im Request-Body
+// ===============================
 app.use(express.json());
 
-// Einfacher Gesundheitscheck-Endpunkt, um zu prüfen, ob der Server läuft
-// Gibt immer ein OK und einen Zeitstempel zurück
+// ===============================
+// Gesundheitscheck-Endpunkt
+// Gibt immer ein OK und einen Zeitstempel zurück, um zu prüfen, ob der Server läuft
+// ===============================
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// ===============================
 // Haupt-Endpunkt: Prüft eine Liste von URLs, die im Request-Body gesendet werden
 // Erwartet ein JSON-Objekt mit einem Array-Feld "urls"
+// Validiert die Eingabe und gibt für jede URL ein Ergebnisobjekt zurück
+// ===============================
 app.post('/check-urls', async (req, res) => {
   try {
     const { urls } = req.body;
@@ -64,30 +78,39 @@ app.post('/check-urls', async (req, res) => {
   }
 });
 
+// ===============================
 // Startet den Server und gibt die wichtigsten URLs in der Konsole aus
+// ===============================
 app.listen(PORT, () => {
   console.log(`🚀 Server läuft auf http://localhost:${PORT}`);
   console.log(`📊 Gesundheitscheck: http://localhost:${PORT}/health`);
 });
 
+// ===============================
 // Fehlerbehandlung für alle nicht existierenden Endpunkte (404)
 // Wird aufgerufen, wenn keine andere Route passt
+// ===============================
 app.use((req, res, next) => {
   res.status(404).json({ error: 'Endpunkt nicht gefunden' });
 });
 
+// ===============================
 // Globale Fehlerbehandlung für unerwartete Fehler im Server
 // Gibt immer einen generischen Fehlertext zurück, damit keine sensiblen Infos nach außen gelangen
+// ===============================
 app.use((error, req, res, next) => {
   console.error('Unbehandelter Fehler:', error);
   res.status(500).json({ error: 'Interner Serverfehler' });
 });
 
+// ===============================
 // Behandelt das SIGTERM-Signal (z.B. bei Herunterfahren des Servers durch das Betriebssystem)
 // Sorgt für ein sauberes Beenden des Prozesses
+// ===============================
 process.on('SIGTERM', () => {
   console.log('Server wird heruntergefahren...');
   process.exit(0);
 });
 
-module.exports = app; // Exportiert den Express-Server für weitere Verwendung
+// Exportiert die App-Instanz für Tests und externe Nutzung
+module.exports = app;

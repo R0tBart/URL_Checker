@@ -1,31 +1,31 @@
 ![logo](./backend/images/layer8.png)
 
+# URL-Checker Dashboard
 
-# Multi-URL Checker Dashboard
-
-Ein Tool zum gleichzeitigen Überprüfen mehrer URLs über ein Web-Frontend. Ideal für SEO-Checks, Systemadministration oder Webmonitoring. Unterstützt Statuscode-Analyse, SSL-Validierung, Ladezeitmessung und DNS-Auflösung.
+Ein modernes Tool zum gleichzeitigen Überprüfen vieler URLs über ein Web-Frontend. Ideal für SEO-Checks, Systemadministration oder Webmonitoring. Unterstützt Statuscode-Analyse, SSL-Validierung, Ladezeitmessung, DNS-Auflösung **und VirusTotal-Sicherheitscheck**.
 
 ---
 
-## 🔧 Features
+## 🚀 Features
 - HTTP-Statuscode-Erkennung
 - Ladezeit-Messung
 - SSL-Zertifikats-Check (gültig oder nicht)
 - Redirect-Erkennung
 - DNS/IP-Auflösung
+- **VirusTotal-Integration** (Gefahren-Check)
 - REST API via Express (Node.js)
 - Parallele URL-Überprüfung mit Axios
+- CSV-Export (Frontend)
 
 ---
 
-# 🧰 Techstack
-
+## 🧰 Techstack
 | Bereich       | Technologie            |
 |--------------|------------------------|
-| Backend       | Node.js, Express, Axios |
-| Frontend      | HTML, CSS, Vanilla JS |
-| Datenvisual.  | Chart.js (optional)    |
-| Tools         | Docker (optional)      |
+| Backend      | Node.js, Express, Axios, dotenv |
+| Frontend     | HTML, CSS, Vanilla JS, Bootstrap |
+| Tools        | Jest, Supertest, PowerShell, Docker (optional) |
+
 ---
 ---
 # 👥 Team & Aufgaben
@@ -60,32 +60,43 @@ Ein Tool zum gleichzeitigen Überprüfen mehrer URLs über ein Web-Frontend. Ide
 ---
 ---
 
-## 📦 Installation
+## 📦 Installation & Start
 
-### 🔁 Klonen:
+### 1. Repository klonen
 ```bash
 git clone https://github.com/dein-user/url-checker.git
 cd url-checker/backend
 ```
 
-### 📦 Node.js-Abhängigkeiten installieren:
+### 2. Node.js-Abhängigkeiten installieren
 ```bash
 npm install
 ```
 
----
+### 3. .env-Datei anlegen (für VirusTotal)
+Im Ordner `backend`:
+```
+VIRUSTOTAL_API_KEY=dein_api_key
+```
 
-## 🚀 Starten des Backends
+### 4. Backend starten
 ```bash
 npm run dev
 ```
-Die API ist dann erreichbar unter: `http://localhost:8000/check-urls`
+API erreichbar unter: `http://localhost:8000/check-urls`
+
+---
+
+## 🌐 Frontend nutzen
+- Öffne `frontend/index.html` im Browser (am besten über lokalen Webserver, z.B. VSCode Live Server)
+- URLs eintragen (eine pro Zeile), auf **Prüfen** klicken
+- Ergebnisse werden übersichtlich angezeigt und können als CSV exportiert werden
 
 ---
 
 ## 📬 Beispiel-Request (POST `/check-urls`)
 
-### JSON Input:
+**JSON Input:**
 ```json
 {
   "urls": [
@@ -95,27 +106,43 @@ Die API ist dann erreichbar unter: `http://localhost:8000/check-urls`
 }
 ```
 
-### JSON Response:
+**JSON Response:**
 ```json
-[
-  {
-    "url": "https://example.com",
-    "status_code": 200,
-    "response_time": 142,
-    "ssl_valid": true,
-    "redirect": false,
-    "ip": "93.184.216.34"
-  },
-  ...
-]
+{
+  "count": 2,
+  "results": [
+    {
+      "url": "https://example.com",
+      "status_code": 200,
+      "response_time": 142,
+      "ssl_valid": true,
+      "redirect": false,
+      "ip": "93.184.216.34",
+      "headers": { "content-type": "text/html" },
+      "virus_check": {
+        "malicious": 0,
+        "suspicious": 0,
+        "permalink": "https://www.virustotal.com/gui/url/..."
+      }
+    },
+    ...
+  ]
+}
 ```
 
 ---
 
-## 🧪 Test-Frontend (optional)
-1. `frontend/index.html` im Browser öffnen
-2. URLs einfügen, auf „Check starten“ klicken
-3. Ergebnisse in Tabelle anzeigen
+## 🧪 Testen
+
+### PowerShell-Testskript
+Im Hauptverzeichnis findest du ein Beispielskript `test_api.ps1`, das die API automatisch testet.
+
+### Automatisierte Tests (Jest)
+Im Backend-Ordner:
+```bash
+npm test
+```
+Die Tests prüfen die wichtigsten API-Funktionen und Fehlerfälle.
 
 ---
 
@@ -123,28 +150,27 @@ Die API ist dann erreichbar unter: `http://localhost:8000/check-urls`
 ```
 url-checker/
 ├── backend/
-|   ├── images/
-|       ├── server_laeuft.png
-|       ├── server_laeuft_NICHT_test.png
-|       └── server_laeuft_test.png
+│   ├── images/
 │   ├── index.js
 │   ├── utils.js
 │   ├── package.json
-|   ├── readMe_BACKEND.md
-│   └── .env         # optional, für Umgebungsvariablen im Moment nicht vorhanden!
+│   ├── readMe_BACKEND.md
+│   └── .env         # für Umgebungsvariablen (API-Key)
 ├── frontend/
 │   ├── index.html
-│   └── scripts.js
+│   ├── scripts.js
+│   └── style.css
+├── test_api.ps1
 └── README.md
 ```
 
 ---
 
 ## 🔒 Hinweise / Sicherheit
-- CORS beachten, wenn Frontend separat gehostet wird (Express-Konfiguration ggf. anpassen)
+- CORS ist aktiviert, damit das Frontend überall genutzt werden kann
 - SSL-Checks sind limitiert bei bestimmten Redirects (z. B. HTTP → HTTPS)
-- Request-Timeout ist gesetzt (5 Sekunden) – ggf. anpassen
-- API-Ratelimit bei öffentlichem Hosting bedenken
+- Request-Timeout ist gesetzt (10 Sekunden) – ggf. anpassen
+- API-Ratelimit bei öffentlichem Hosting bedenken (insbesondere VirusTotal)
 - `.env`-Datei ist in `.gitignore` eingetragen
 
 ---
