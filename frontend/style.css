@@ -84,7 +84,7 @@ h1 {
     align-items: center;
 }
 
-#urlInput {
+#urls {
     background: rgba(23, 42, 69, 0.8);
     color: #f8fafc;
     border: 1px solid #1e40af;
@@ -95,8 +95,8 @@ h1 {
     transition: all 0.3s ease;
 }
 
-#urlInput:hover,
-#urlInput:focus {
+#urls:hover,
+#urls:focus {
     background: rgba(30, 58, 110, 0.9);
     outline: none;
     border-color: #3b82f6;

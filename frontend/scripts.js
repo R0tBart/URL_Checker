@@ -13,6 +13,7 @@ document.getElementById('urlForm').addEventListener('submit', async function (e)
   // Ergebnis-Box referenzieren
   const resultBox = document.getElementById('result');
   resultBox.textContent = 'Prüfe URLs...';
+  resultBox.classList.add('has-content');
 
   try {
     const response = await fetch('http://localhost:8000/check-urls', {
