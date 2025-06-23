@@ -1,78 +1,115 @@
-// backend/utils.js
-const axios = require('axios');        // Importiert die Axios-Bibliothek für HTTP-Anfragen
-const dns = require('dns').promises;   // Importiert das DNS-Modul für die Namensauflösung (Promise-basiert)
-const tls = require('tls');            // Importiert das TLS-Modul für die SSL-Zertifikatprüfung
-const { URL } = require('url');        // Importiert die URL-Klasse zum Parsen von URLs
-const { performance } = require('perf_hooks'); // Importiert performance von perf_hooks für Zeitmessungen
+// Lädt Umgebungsvariablen aus der .env-Datei, damit API-Keys und Konfigurationen nicht im Quellcode stehen müssen
+require('dotenv').config(); // Für Zugriff auf .env
+// Importiert alle benötigten Node.js-Module für HTTP-Anfragen, DNS-Auflösung, SSL-Prüfung und Zeitmessung
+const axios = require('axios');
+const dns = require('dns').promises;
+const tls = require('tls');
+const { URL } = require('url');
+const { performance } = require('perf_hooks');
 
-// Hilfsfunktion zur IP-Auflösung eines Hostnamens
+// Liest den API-Key für VirusTotal aus den Umgebungsvariablen
+const virusTotalApiKey = process.env.VIRUSTOTAL_API_KEY;
+
+// Prüft, ob eine URL von VirusTotal als gefährlich oder verdächtig eingestuft wird
+// Nutzt die öffentliche API von VirusTotal, um eine Sicherheitsbewertung der URL zu erhalten
+async function checkUrlVirusTotal(url) {
+  try {
+    // Die URL muss für die API base64-kodiert werden (ohne abschließende Gleichheitszeichen)
+    const encodedUrl = Buffer.from(url).toString('base64').replace(/=+$/, '');
+    const res = await axios.get(
+      `https://www.virustotal.com/api/v3/urls/${encodedUrl}`,
+      {
+        headers: {
+          'x-apikey': virusTotalApiKey
+        }
+      }
+    );
+
+    // Extrahiert die wichtigsten Analyse-Statistiken (z.B. wie viele Engines die URL als "malicious" melden)
+    const stats = res.data.data.attributes.last_analysis_stats;
+    return {
+      malicious: stats.malicious, // Anzahl der Engines, die die URL als bösartig einstufen
+      suspicious: stats.suspicious, // Anzahl der Engines, die die URL als verdächtig einstufen
+      stats, // Alle Analyse-Statistiken
+      permalink: `https://www.virustotal.com/gui/url/${encodedUrl}/detection` // Link zum vollständigen Bericht
+    };
+  } catch (err) {
+    // Gibt bei Fehlern eine Warnung aus und gibt die Fehlermeldung zurück
+    console.warn(`VirusTotal-Fehler für ${url}:`, err.message);
+    return { error: err.message };
+  }
+}
+
+// Löst einen Hostnamen (z.B. "example.com") in eine IP-Adresse auf
+// Gibt die IP-Adresse zurück oder null, falls die Auflösung fehlschlägt
 async function resolveIp(hostname) {
   try {
-    const result = await dns.lookup(hostname); // Führt eine DNS-Abfrage durch
-    return result.address;                     // Gibt die aufgelöste IP-Adresse zurück
+    const result = await dns.lookup(hostname);
+    return result.address;
   } catch (err) {
-    // Warnt bei fehlgeschlagener DNS-Auflösung und gibt null zurück
+    // Gibt bei Fehlern eine Warnung aus und gibt null zurück
     console.warn(`DNS-Auflösung fehlgeschlagen für ${hostname}:`, err.message);
     return null;
   }
 }
 
-// Hilfsfunktion zur SSL-Zertifikatprüfung einer HTTPS-Verbindung
+// Prüft, ob für einen Host ein gültiges SSL-Zertifikat existiert
+// Verbindet sich mit dem Server und prüft das Ablaufdatum des Zertifikats
 function checkSslValid(hostname, port = 443) {
   return new Promise((resolve) => {
-    // Setzt einen Timeout für die SSL-Prüfung, falls die Verbindung hängt
+    // Timeout, falls der Server nicht rechtzeitig antwortet
     const timeout = setTimeout(() => {
-      resolve(false); // Löst mit false auf, wenn der Timeout erreicht ist
+      resolve(false);
     }, 5000);
 
-    // Stellt eine TLS-Verbindung her
-    const socket = tls.connect(port, hostname, { 
-      servername: hostname, 
-      rejectUnauthorized: false, // Erlaubt selbstsignierte Zertifikate (für Testzwecke)
-      timeout: 5000 // Timeout für die Socket-Verbindung
+    // Baut eine TLS-Verbindung auf (ohne Zertifikatsvalidierung, da wir nur das Ablaufdatum prüfen)
+    const socket = tls.connect(port, hostname, {
+      servername: hostname,
+      rejectUnauthorized: false,
+      timeout: 5000
     }, () => {
-      clearTimeout(timeout); // Löscht den Timeout, da die Verbindung hergestellt wurde
+      clearTimeout(timeout);
       try {
-        const cert = socket.getPeerCertificate(); // Holt das SSL-Zertifikat
-        // Überprüft, ob das Zertifikat gültig ist (nicht abgelaufen)
+        const cert = socket.getPeerCertificate();
+        // Überprüft, ob das Zertifikat noch gültig ist (Ablaufdatum in der Zukunft)
         const valid = cert.valid_to && new Date(cert.valid_to) > new Date();
-        socket.end(); // Schließt die Socket-Verbindung
-        resolve(valid); // Löst mit dem Validierungsstatus auf
+        socket.end();
+        resolve(valid);
       } catch (err) {
-        socket.end(); // Schließt die Socket-Verbindung auch bei Fehlern
-        resolve(false); // Löst mit false auf, wenn ein Fehler auftritt
+        socket.end();
+        resolve(false);
       }
     });
 
-    // Fehlerbehandlung für den Socket
+    // Fehler- und Timeout-Handler
     socket.on('error', () => {
-      clearTimeout(timeout); // Löscht den Timeout
-      resolve(false); // Löst mit false auf
+      clearTimeout(timeout);
+      resolve(false);
     });
 
-    // Timeout-Behandlung für den Socket
     socket.on('timeout', () => {
-      clearTimeout(timeout); // Löscht den Timeout
-      socket.destroy(); // Zerstört den Socket
-      resolve(false); // Löst mit false auf
+      clearTimeout(timeout);
+      socket.destroy();
+      resolve(false);
     });
   });
 }
 
-// Hilfsfunktion zur Validierung einer URL-Zeichenkette
+// Prüft, ob ein String eine gültige URL ist (Syntaxprüfung)
 function isValidUrl(string) {
   try {
-    new URL(string); // Versucht, eine URL zu erstellen
-    return true; // Erfolgreich, URL ist gültig
+    new URL(string);
+    return true;
   } catch (_) {
-    return false; // Fehler, URL ist ungültig
+    return false;
   }
 }
 
-// Hauptfunktion zum Prüfen einer URL
+// Hauptfunktion: Prüft eine URL auf Erreichbarkeit, SSL-Gültigkeit, IP, Weiterleitung und Virenstatus
+// Gibt ein umfassendes Ergebnisobjekt zurück, das alle Prüfergebnisse enthält
 async function checkUrl(url) {
-  // URL vor der Verarbeitung validieren
   if (!isValidUrl(url)) {
+    // Gibt bei ungültiger URL ein Fehlerobjekt zurück
     return {
       url,
       status_code: null,
@@ -80,52 +117,55 @@ async function checkUrl(url) {
       ssl_valid: null,
       redirect: false,
       ip: null,
-      error: 'Ungültige URL' // Gibt einen Fehler für ungültige URLs zurück
+      virus_check: null,
+      error: 'Ungültige URL'
     };
   }
 
   try {
-    const start = Date.now(); // Startzeit der Anfrage
-    // Führt eine GET-Anfrage an die URL durch
-    const response = await axios.get(url, { 
-      maxRedirects: 0, // Folgt keinen Weiterleitungen
-      timeout: 10000, // Timeout für die HTTP-Anfrage (10 Sekunden)
-      validateStatus: null, // Akzeptiert alle Statuscodes (keine Fehler bei 4xx/5xx)
+    // Startzeit für Antwortzeitmessung (Millisekunden)
+    const start = Date.now();
+    // Sendet einen HTTP-Request (ohne Weiterleitungen zu folgen, um Redirects zu erkennen)
+    const response = await axios.get(url, {
+      maxRedirects: 0,
+      timeout: 10000,
+      validateStatus: null,
       headers: {
-        'User-Agent': 'URL-Checker/1.0' // Setzt einen User-Agent-Header
+        'User-Agent': 'URL-Checker/1.0'
       }
     });
-    const end = Date.now(); // Endzeit der Anfrage
+    const end = Date.now();
 
-    const parsedUrl = new URL(url); // Parsen der URL für Hostname und Protokoll
-    const hostname = parsedUrl.hostname; // Extrahiert den Hostnamen
+    const parsedUrl = new URL(url);
+    const hostname = parsedUrl.hostname;
 
-    // Führt IP-Auflösung und SSL-Prüfung parallel aus
-    const [ip, sslValid] = await Promise.all([
-      resolveIp(hostname), // Ruft die IP-Adresse ab
-      parsedUrl.protocol === 'https:' ? checkSslValid(hostname) : Promise.resolve(null) // Prüft SSL nur bei HTTPS
+    // Führt IP-Auflösung, SSL-Prüfung (nur bei https) und Virencheck parallel aus
+    const [ip, sslValid, virusCheck] = await Promise.all([
+      resolveIp(hostname),
+      parsedUrl.protocol === 'https:' ? checkSslValid(hostname) : Promise.resolve(null),
+      checkUrlVirusTotal(url)
     ]);
 
-    // Gibt die gesammelten Prüfergebnisse zurück
+    // Gibt alle gesammelten Informationen zur URL zurück
     return {
       url,
-      status_code: response.status,
-      response_time: end - start,
-      ssl_valid: sslValid,
-      redirect: response.status >= 300 && response.status < 400, // Prüft auf Weiterleitung
-      ip,
+      status_code: response.status, // HTTP-Statuscode (z.B. 200, 404, 301)
+      response_time: end - start, // Antwortzeit in Millisekunden
+      ssl_valid: sslValid, // true/false/null je nach SSL-Prüfung
+      redirect: response.status >= 300 && response.status < 400, // true, falls Redirect
+      ip, // IP-Adresse des Servers
       headers: {
-        'content-type': response.headers['content-type'], // Extrahiert Content-Type Header
-        'server': response.headers['server'] // Extrahiert Server Header
-      }
+        'content-type': response.headers['content-type'], // Typ der Antwort (z.B. text/html)
+        'server': response.headers['server'] // Server-Software (falls vorhanden)
+      },
+      virus_check: virusCheck // Ergebnis des VirusTotal-Checks
     };
   } catch (err) {
-    // Fehlerbehandlung bei Problemen mit der HTTP-Anfrage
+    // Fehlerfall: Versucht trotzdem, IP und Virencheck zu liefern
     const parsedUrl = new URL(url);
-    // Versucht, die IP-Adresse auch bei Fehlern aufzulösen
     const ip = await resolveIp(parsedUrl.hostname).catch(() => null);
-    
-    // Gibt Fehlerdetails zurück
+    const virusCheck = await checkUrlVirusTotal(url);
+
     return {
       url,
       status_code: null,
@@ -133,17 +173,20 @@ async function checkUrl(url) {
       ssl_valid: null,
       redirect: false,
       ip,
-      error: err.code || err.message // Gibt Fehlercode oder Fehlermeldung zurück
+      virus_check: virusCheck,
+      error: err.code || err.message // Fehlercode oder Nachricht
     };
   }
 }
 
-// Hilfsfunktion zur Messung der Ausführungszeit einer asynchronen Funktion
+// Misst die Ausführungszeit einer beliebigen asynchronen Funktion
+// Gibt das Ergebnis der Funktion und die gemessene Dauer in Millisekunden zurück
 async function measureExecutionTime(func) {
-  const start = performance.now(); // Startzeitpunkt der Ausführung
-  const result = await func();    // Führt die übergebene Funktion aus
-  const end = performance.now();   // Endzeitpunkt der Ausführung
-  return { result, duration: end - start }; // Gibt das Ergebnis und die Dauer zurück
+  const start = performance.now();
+  const result = await func();
+  const end = performance.now();
+  return { result, duration: end - start };
 }
 
-module.exports = { checkUrl, measureExecutionTime }; // Exportiert checkUrl und measureExecutionTime
+// Exportiert die Hauptfunktionen, damit sie im Server (index.js) verwendet werden können
+module.exports = { checkUrl, measureExecutionTime };

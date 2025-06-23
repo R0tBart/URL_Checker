@@ -1,94 +1,93 @@
+// Importiert das Express-Framework für die Erstellung des Webservers
+// und die Hilfsfunktion checkUrl aus der utils.js für die URL-Prüfung
 const express = require('express');
 const { checkUrl } = require('./utils');
 
-// Express-Anwendung initialisieren
 const app = express();
-// Port für den Server, Standard ist 8000
+// Bestimmt den Port, auf dem der Server läuft (aus Umgebungsvariablen oder Standard 8000)
 const PORT = process.env.PORT || 8000;
 
-// CORS-Middleware hinzufügen
-// Ermöglicht Cross-Origin-Anfragen vom Frontend
+// Aktiviert CORS (Cross-Origin Resource Sharing), damit Anfragen von beliebigen Domains (z.B. vom Frontend) erlaubt sind
+// Dies ist wichtig, damit das Frontend im Browser mit dem Backend kommunizieren kann
 app.use((req, res, next) => {
-  // Erlaubt Anfragen von jeder Origin (*)
   res.header('Access-Control-Allow-Origin', '*');
-  // Erlaubt spezifische HTTP-Methoden
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  // Erlaubt spezifische Header in den Anfragen
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  
-  // Behandelt OPTIONS-Anfragen (Preflight-Anfragen für CORS)
   if (req.method === 'OPTIONS') {
+    // Preflight-Request für CORS: Sofort mit 200 antworten
     res.sendStatus(200);
   } else {
-    // Fährt mit der nächsten Middleware fort
     next();
   }
 });
 
-// Middleware zum Parsen von JSON-Anfragekörpern
+// Aktiviert das automatische Parsen von JSON-Daten im Request-Body
 app.use(express.json());
 
-// Gesundheitscheck-Endpunkt
-// Gibt den Status des Servers zurück
+// Einfacher Gesundheitscheck-Endpunkt, um zu prüfen, ob der Server läuft
+// Gibt immer ein OK und einen Zeitstempel zurück
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// POST-Endpunkt für URL-Prüfungen
-// Verarbeitet eine Liste von URLs und gibt deren Prüfergebnisse zurück
+// Haupt-Endpunkt: Prüft eine Liste von URLs, die im Request-Body gesendet werden
+// Erwartet ein JSON-Objekt mit einem Array-Feld "urls"
 app.post('/check-urls', async (req, res) => {
   try {
     const { urls } = req.body;
 
-    // Eingabekontrolle: Überprüfen, ob 'urls' vorhanden und ein Array ist
+    // Validierung: Prüft, ob das Feld "urls" existiert und ein Array ist
     if (!urls || !Array.isArray(urls)) {
       return res.status(400).json({ error: 'Bitte sende ein Feld "urls" mit einer Array von URLs.' });
     }
 
-    // Eingabekontrolle: Überprüfen, ob die URL-Liste leer ist
+    // Validierung: Array darf nicht leer sein
     if (urls.length === 0) {
       return res.status(400).json({ error: 'Die URL-Liste darf nicht leer sein.' });
     }
 
-    // Eingabekontrolle: Begrenzung der Anzahl der URLs pro Anfrage
+    // Validierung: Maximal 50 URLs pro Anfrage erlaubt, um Serverlast zu begrenzen
     if (urls.length > 50) {
       return res.status(400).json({ error: 'Maximal 50 URLs pro Anfrage erlaubt.' });
     }
 
-    // Alle URLs gleichzeitig verarbeiten und Ergebnisse sammeln
+    // Prüft alle URLs parallel mit der checkUrl-Funktion aus utils.js
+    // Die Ergebnisse werden als Array zurückgegeben
     const results = await Promise.all(urls.map(url => checkUrl(url)));
 
-    // Ergebnisse und Anzahl der verarbeiteten URLs zurückgeben
+    // Antwort enthält alle Ergebnisse und die Anzahl der geprüften URLs
     res.json({ results, count: results.length });
   } catch (error) {
-    // Fehler bei der Verarbeitung der URLs loggen und 500er-Status zurückgeben
+    // Fehlerbehandlung: Gibt bei unerwarteten Fehlern einen Serverfehler zurück
     console.error('Fehler beim Verarbeiten der URLs:', error);
     res.status(500).json({ error: 'Interner Serverfehler' });
   }
 });
 
-// Server starten
+// Startet den Server und gibt die wichtigsten URLs in der Konsole aus
 app.listen(PORT, () => {
   console.log(`🚀 Server läuft auf http://localhost:${PORT}`);
   console.log(`📊 Gesundheitscheck: http://localhost:${PORT}/health`);
 });
 
-// Fehlerbehandlung für unbekannte Routen (404 Not Found)
-// Diese Middleware wird ausgeführt, wenn keine der vorherigen Routen übereinstimmt
+// Fehlerbehandlung für alle nicht existierenden Endpunkte (404)
+// Wird aufgerufen, wenn keine andere Route passt
 app.use((req, res, next) => {
   res.status(404).json({ error: 'Endpunkt nicht gefunden' });
 });
 
-// Globale Fehlerbehandlung
-// Fängt alle unbehandelten Fehler in der Anwendung ab
+// Globale Fehlerbehandlung für unerwartete Fehler im Server
+// Gibt immer einen generischen Fehlertext zurück, damit keine sensiblen Infos nach außen gelangen
 app.use((error, req, res, next) => {
   console.error('Unbehandelter Fehler:', error);
   res.status(500).json({ error: 'Interner Serverfehler' });
 });
 
-// Graceful shutdown: Behandelt SIGTERM-Signal (z.B. von Docker oder Prozessmanagern)
-// Stellt sicher, dass der Server sauber beendet wird
+// Behandelt das SIGTERM-Signal (z.B. bei Herunterfahren des Servers durch das Betriebssystem)
+// Sorgt für ein sauberes Beenden des Prozesses
 process.on('SIGTERM', () => {
   console.log('Server wird heruntergefahren...');
   process.exit(0);
 });
+
+module.exports = app; // Exportiert den Express-Server für weitere Verwendung
