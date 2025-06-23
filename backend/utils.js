@@ -1,5 +1,11 @@
+// ===============================
+// Hilfsfunktionen für den URL-Checker (utils.js)
+// Diese Datei enthält alle zentralen Prüf- und Analysefunktionen für URLs.
+// ===============================
+
 // Lädt Umgebungsvariablen aus der .env-Datei, damit API-Keys und Konfigurationen nicht im Quellcode stehen müssen
-require('dotenv').config();
+
+require('dotenv').config(); // Für Zugriff auf .env
 
 // Importiert alle benötigten Node.js-Module für HTTP-Anfragen, DNS-Auflösung, SSL-Prüfung und Zeitmessung
 const axios = require('axios');
@@ -14,7 +20,13 @@ const { chromium } = require('playwright');
 // Liest den API-Key für VirusTotal aus den Umgebungsvariablen
 const virusTotalApiKey = process.env.VIRUSTOTAL_API_KEY;
 
-// Prüft eine URL mit der VirusTotal-API auf verdächtige oder bösartige Inhalte
+
+// ===============================
+// Prüft, ob eine URL von VirusTotal als gefährlich oder verdächtig eingestuft wird
+// Nutzt die öffentliche API von VirusTotal, um eine Sicherheitsbewertung der URL zu erhalten
+// Rückgabe: Objekt mit Analyse-Statistiken, Link zum Bericht oder Fehler
+// ===============================
+
 async function checkUrlVirusTotal(url) {
   try {
     const encodedUrl = Buffer.from(url).toString('base64').replace(/=+$/, '');
@@ -34,7 +46,11 @@ async function checkUrlVirusTotal(url) {
   }
 }
 
-// Führt eine DNS-Auflösung durch und gibt die IP-Adresse des Hosts zurück
+// ===============================
+// Löst einen Hostnamen (z.B. "example.com") in eine IP-Adresse auf
+// Gibt die IP-Adresse zurück oder null, falls die Auflösung fehlschlägt
+// ===============================
+
 async function resolveIp(hostname) {
   try {
     const result = await dns.lookup(hostname);
@@ -45,7 +61,13 @@ async function resolveIp(hostname) {
   }
 }
 
-// Prüft, ob ein gültiges SSL-Zertifikat vorhanden ist und nicht abgelaufen
+
+// ===============================
+// Prüft, ob für einen Host ein gültiges SSL-Zertifikat existiert
+// Verbindet sich mit dem Server und prüft das Ablaufdatum des Zertifikats
+// Rückgabe: true (gültig), false (ungültig), null (nicht geprüft)
+// ===============================
+
 function checkSslValid(hostname, port = 443) {
   return new Promise((resolve) => {
     const timeout = setTimeout(() => resolve(false), 5000);
@@ -77,7 +99,11 @@ function checkSslValid(hostname, port = 443) {
   });
 }
 
-// Prüft, ob ein String eine gültige URL darstellt
+// ===============================
+// Prüft, ob ein String eine gültige URL ist (Syntaxprüfung)
+// Rückgabe: true/false
+// ===============================
+
 function isValidUrl(string) {
   try {
     new URL(string);
@@ -87,7 +113,11 @@ function isValidUrl(string) {
   }
 }
 
-// Hauptfunktion zur Prüfung einer URL auf Status, IP, SSL, Redirects, Virustotal etc.
+// ===============================
+// Hauptfunktion: Prüft eine URL auf Erreichbarkeit, SSL-Gültigkeit, IP, Weiterleitung und Virenstatus
+// Gibt ein umfassendes Ergebnisobjekt zurück, das alle Prüfergebnisse enthält
+// ===============================
+
 async function checkUrl(url) {
   if (!isValidUrl(url)) {
     return {
@@ -146,6 +176,7 @@ async function checkUrl(url) {
     };
   }
 }
+
 
 // Berechnet Basisstatistiken (z. B. Statuscode-Verteilung, Ladezeiten) aus Beispieldaten
 async function getStats() {
@@ -207,13 +238,18 @@ async function takeScreenshot(url, filename) {
   }
 }
 
-// Misst die Ausführungszeit einer beliebigen async-Funktion
+// ===============================
+// Misst die Ausführungszeit einer beliebigen asynchronen Funktion
+// Gibt das Ergebnis der Funktion und die gemessene Dauer in Millisekunden zurück
+// ===============================
+
 async function measureExecutionTime(func) {
   const start = performance.now();
   const result = await func();
   const end = performance.now();
   return { result, duration: end - start };
 }
+
 
 // Exportiert alle Hauptfunktionen für die Nutzung in index.js
 module.exports = {
