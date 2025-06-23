@@ -1,7 +1,7 @@
 // Importiert das Express-Framework für die Erstellung des Webservers
 // und die Hilfsfunktion checkUrl aus der utils.js für die URL-Prüfung
 const express = require('express');
-const { checkUrl } = require('./utils');
+const { checkUrl, getStats, exportCsv, getGeoIp, takeScreenshot } = require('./utils');
 
 const app = express();
 // Bestimmt den Port, auf dem der Server läuft (aus Umgebungsvariablen oder Standard 8000)
@@ -61,6 +61,38 @@ app.post('/check-urls', async (req, res) => {
     // Fehlerbehandlung: Gibt bei unerwarteten Fehlern einen Serverfehler zurück
     console.error('Fehler beim Verarbeiten der URLs:', error);
     res.status(500).json({ error: 'Interner Serverfehler' });
+  }
+});
+
+// Zusatz-Endpunkt: Gibt Statuscode-Auswertung & Metriken zurück (für Chart.js)
+app.get('/stats', async (req, res) => {
+  const stats = await getStats();
+  res.json(stats);
+});
+
+// Export-Endpunkt für CSV-Datei
+app.get('/export', async (req, res) => {
+  const csv = await exportCsv();
+  res.setHeader('Content-Disposition', 'attachment; filename=export.csv');
+  res.setHeader('Content-Type', 'text/csv');
+  res.send(csv);
+});
+
+// GeoIP-Abfrage zu einer IP-Adresse
+app.get('/geoip/:ip', async (req, res) => {
+  const geo = await getGeoIp(req.params.ip);
+  res.json(geo);
+});
+
+// Screenshot-Erzeugung (z. B. via Playwright, optional)
+app.get('/screenshot', async (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.status(400).json({ error: 'URL fehlt in Query' });
+  const filepath = await takeScreenshot(url, 'screenshot');
+  if (filepath) {
+    res.download(filepath);
+  } else {
+    res.status(500).json({ error: 'Screenshot fehlgeschlagen' });
   }
 });
 
