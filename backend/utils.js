@@ -4,6 +4,7 @@
 // ===============================
 
 // Lädt Umgebungsvariablen aus der .env-Datei, damit API-Keys und Konfigurationen nicht im Quellcode stehen müssen
+
 require('dotenv').config(); // Für Zugriff auf .env
 
 // Importiert alle benötigten Node.js-Module für HTTP-Anfragen, DNS-Auflösung, SSL-Prüfung und Zeitmessung
@@ -12,38 +13,34 @@ const dns = require('dns').promises;
 const tls = require('tls');
 const { URL } = require('url');
 const { performance } = require('perf_hooks');
+const fs = require('fs');
+const path = require('path');
+const { chromium } = require('playwright');
 
 // Liest den API-Key für VirusTotal aus den Umgebungsvariablen
 const virusTotalApiKey = process.env.VIRUSTOTAL_API_KEY;
+
 
 // ===============================
 // Prüft, ob eine URL von VirusTotal als gefährlich oder verdächtig eingestuft wird
 // Nutzt die öffentliche API von VirusTotal, um eine Sicherheitsbewertung der URL zu erhalten
 // Rückgabe: Objekt mit Analyse-Statistiken, Link zum Bericht oder Fehler
 // ===============================
+
 async function checkUrlVirusTotal(url) {
   try {
-    // Die URL muss für die API base64-kodiert werden (ohne abschließende Gleichheitszeichen)
     const encodedUrl = Buffer.from(url).toString('base64').replace(/=+$/, '');
-    const res = await axios.get(
-      `https://www.virustotal.com/api/v3/urls/${encodedUrl}`,
-      {
-        headers: {
-          'x-apikey': virusTotalApiKey
-        }
-      }
-    );
-
-    // Extrahiert die wichtigsten Analyse-Statistiken (z.B. wie viele Engines die URL als "malicious" melden)
+    const res = await axios.get(`https://www.virustotal.com/api/v3/urls/${encodedUrl}`, {
+      headers: { 'x-apikey': virusTotalApiKey }
+    });
     const stats = res.data.data.attributes.last_analysis_stats;
     return {
-      malicious: stats.malicious, // Anzahl der Engines, die die URL als bösartig einstufen
-      suspicious: stats.suspicious, // Anzahl der Engines, die die URL als verdächtig einstufen
-      stats, // Alle Analyse-Statistiken
-      permalink: `https://www.virustotal.com/gui/url/${encodedUrl}/detection` // Link zum vollständigen Bericht
+      malicious: stats.malicious,
+      suspicious: stats.suspicious,
+      stats,
+      permalink: `https://www.virustotal.com/gui/url/${encodedUrl}/detection`
     };
   } catch (err) {
-    // Gibt bei Fehlern eine Warnung aus und gibt die Fehlermeldung zurück
     console.warn(`VirusTotal-Fehler für ${url}:`, err.message);
     return { error: err.message };
   }
@@ -53,30 +50,27 @@ async function checkUrlVirusTotal(url) {
 // Löst einen Hostnamen (z.B. "example.com") in eine IP-Adresse auf
 // Gibt die IP-Adresse zurück oder null, falls die Auflösung fehlschlägt
 // ===============================
+
 async function resolveIp(hostname) {
   try {
     const result = await dns.lookup(hostname);
     return result.address;
   } catch (err) {
-    // Gibt bei Fehlern eine Warnung aus und gibt null zurück
     console.warn(`DNS-Auflösung fehlgeschlagen für ${hostname}:`, err.message);
     return null;
   }
 }
+
 
 // ===============================
 // Prüft, ob für einen Host ein gültiges SSL-Zertifikat existiert
 // Verbindet sich mit dem Server und prüft das Ablaufdatum des Zertifikats
 // Rückgabe: true (gültig), false (ungültig), null (nicht geprüft)
 // ===============================
+
 function checkSslValid(hostname, port = 443) {
   return new Promise((resolve) => {
-    // Timeout, falls der Server nicht rechtzeitig antwortet
-    const timeout = setTimeout(() => {
-      resolve(false);
-    }, 5000);
-
-    // Baut eine TLS-Verbindung auf (ohne Zertifikatsvalidierung, da wir nur das Ablaufdatum prüfen)
+    const timeout = setTimeout(() => resolve(false), 5000);
     const socket = tls.connect(port, hostname, {
       servername: hostname,
       rejectUnauthorized: false,
@@ -85,7 +79,6 @@ function checkSslValid(hostname, port = 443) {
       clearTimeout(timeout);
       try {
         const cert = socket.getPeerCertificate();
-        // Überprüft, ob das Zertifikat noch gültig ist (Ablaufdatum in der Zukunft)
         const valid = cert.valid_to && new Date(cert.valid_to) > new Date();
         socket.end();
         resolve(valid);
@@ -94,13 +87,10 @@ function checkSslValid(hostname, port = 443) {
         resolve(false);
       }
     });
-
-    // Fehler- und Timeout-Handler
     socket.on('error', () => {
       clearTimeout(timeout);
       resolve(false);
     });
-
     socket.on('timeout', () => {
       clearTimeout(timeout);
       socket.destroy();
@@ -113,6 +103,7 @@ function checkSslValid(hostname, port = 443) {
 // Prüft, ob ein String eine gültige URL ist (Syntaxprüfung)
 // Rückgabe: true/false
 // ===============================
+
 function isValidUrl(string) {
   try {
     new URL(string);
@@ -126,9 +117,9 @@ function isValidUrl(string) {
 // Hauptfunktion: Prüft eine URL auf Erreichbarkeit, SSL-Gültigkeit, IP, Weiterleitung und Virenstatus
 // Gibt ein umfassendes Ergebnisobjekt zurück, das alle Prüfergebnisse enthält
 // ===============================
+
 async function checkUrl(url) {
   if (!isValidUrl(url)) {
-    // Gibt bei ungültiger URL ein Fehlerobjekt zurück
     return {
       url,
       status_code: null,
@@ -140,51 +131,39 @@ async function checkUrl(url) {
       error: 'Ungültige URL'
     };
   }
-
   try {
-    // Startzeit für Antwortzeitmessung (Millisekunden)
     const start = Date.now();
-    // Sendet einen HTTP-Request (ohne Weiterleitungen zu folgen, um Redirects zu erkennen)
     const response = await axios.get(url, {
       maxRedirects: 0,
       timeout: 10000,
       validateStatus: null,
-      headers: {
-        'User-Agent': 'URL-Checker/1.0'
-      }
+      headers: { 'User-Agent': 'URL-Checker/1.0' }
     });
     const end = Date.now();
-
     const parsedUrl = new URL(url);
     const hostname = parsedUrl.hostname;
-
-    // Führt IP-Auflösung, SSL-Prüfung (nur bei https) und Virencheck parallel aus
     const [ip, sslValid, virusCheck] = await Promise.all([
       resolveIp(hostname),
       parsedUrl.protocol === 'https:' ? checkSslValid(hostname) : Promise.resolve(null),
       checkUrlVirusTotal(url)
     ]);
-
-    // Gibt alle gesammelten Informationen zur URL zurück
     return {
       url,
-      status_code: response.status, // HTTP-Statuscode (z.B. 200, 404, 301)
-      response_time: end - start, // Antwortzeit in Millisekunden
-      ssl_valid: sslValid, // true/false/null je nach SSL-Prüfung
-      redirect: response.status >= 300 && response.status < 400, // true, falls Redirect
-      ip, // IP-Adresse des Servers
+      status_code: response.status,
+      response_time: end - start,
+      ssl_valid: sslValid,
+      redirect: response.status >= 300 && response.status < 400,
+      ip,
       headers: {
-        'content-type': response.headers['content-type'], // Typ der Antwort (z.B. text/html)
-        'server': response.headers['server'] // Server-Software (falls vorhanden)
+        'content-type': response.headers['content-type'],
+        'server': response.headers['server']
       },
-      virus_check: virusCheck // Ergebnis des VirusTotal-Checks
+      virus_check: virusCheck
     };
   } catch (err) {
-    // Fehlerfall: Versucht trotzdem, IP und Virencheck zu liefern
     const parsedUrl = new URL(url);
     const ip = await resolveIp(parsedUrl.hostname).catch(() => null);
     const virusCheck = await checkUrlVirusTotal(url);
-
     return {
       url,
       status_code: null,
@@ -193,8 +172,69 @@ async function checkUrl(url) {
       redirect: false,
       ip,
       virus_check: virusCheck,
-      error: err.code || err.message // Fehlercode oder Nachricht
+      error: err.code || err.message
     };
+  }
+}
+
+
+// Berechnet Basisstatistiken (z. B. Statuscode-Verteilung, Ladezeiten) aus Beispieldaten
+async function getStats() {
+  const dummyData = [
+    { status_code: 200, response_time: 120, redirect: false },
+    { status_code: 301, response_time: 180, redirect: true },
+    { status_code: 404, response_time: 90, redirect: false }
+  ];
+  const total = dummyData.length;
+  const online = dummyData.filter(r => r.status_code === 200).length;
+  const redirects = dummyData.filter(r => r.redirect).length;
+  const avgTime = Math.round(dummyData.reduce((acc, r) => acc + r.response_time, 0) / total);
+  const distribution = {
+    '2xx': dummyData.filter(r => r.status_code >= 200 && r.status_code < 300).length,
+    '3xx': dummyData.filter(r => r.status_code >= 300 && r.status_code < 400).length,
+    '4xx': dummyData.filter(r => r.status_code >= 400 && r.status_code < 500).length,
+    '5xx': dummyData.filter(r => r.status_code >= 500).length
+  };
+  return { total, online, redirects, avg_response_time: avgTime, distribution };
+}
+
+// Exportiert Ergebnisdaten als CSV-Text
+async function exportCsv() {
+  const results = [
+    { url: 'https://example.com', status_code: 200, response_time: 120, ssl_valid: true, redirect: false, ip: '93.184.216.34' },
+    { url: 'https://test.com', status_code: 301, response_time: 180, ssl_valid: true, redirect: true, ip: '104.21.92.84' }
+  ];
+  const headers = Object.keys(results[0]).join(',');
+  const rows = results.map(obj => Object.values(obj).join(','));
+  return [headers, ...rows].join('\n');
+}
+
+// Holt GeoIP-Daten (Land, Stadt, Organisation) zu einer IP-Adresse
+async function getGeoIp(ip) {
+  try {
+    const res = await axios.get(`https://ipapi.co/${ip}/json/`);
+    const { country_name, city, org } = res.data;
+    return { country: country_name, city, org };
+  } catch {
+    return { country: null, city: null, org: null };
+  }
+}
+
+// Erstellt einen Screenshot der angegebenen URL und speichert ihn lokal ab
+async function takeScreenshot(url, filename) {
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  try {
+    await page.goto(url, { timeout: 10000 });
+    const dir = path.join(__dirname, 'screenshots');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+    const filepath = path.join(dir, `${filename}.png`);
+    await page.screenshot({ path: filepath });
+    await browser.close();
+    return filepath;
+  } catch (err) {
+    await browser.close();
+    return null;
   }
 }
 
@@ -202,6 +242,7 @@ async function checkUrl(url) {
 // Misst die Ausführungszeit einer beliebigen asynchronen Funktion
 // Gibt das Ergebnis der Funktion und die gemessene Dauer in Millisekunden zurück
 // ===============================
+
 async function measureExecutionTime(func) {
   const start = performance.now();
   const result = await func();
@@ -209,7 +250,13 @@ async function measureExecutionTime(func) {
   return { result, duration: end - start };
 }
 
-// ===============================
-// Exportiert die Hauptfunktionen, damit sie im Server (index.js) verwendet werden können
-// ===============================
-module.exports = { checkUrl, measureExecutionTime };
+
+// Exportiert alle Hauptfunktionen für die Nutzung in index.js
+module.exports = {
+  checkUrl,
+  measureExecutionTime,
+  getStats,
+  exportCsv,
+  getGeoIp,
+  takeScreenshot
+ };
