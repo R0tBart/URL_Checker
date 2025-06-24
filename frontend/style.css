@@ -159,6 +159,33 @@ button:active {
     margin-top: 20px;
 }
 
+/* Tabelle für die Ergebnisanzeige */
+.result-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  background: rgba(30, 58, 110, 0.2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.result-table th, .result-table td {
+  border: 1px solid #3b82f6;
+  padding: 10px 8px;
+  text-align: left;
+}
+.result-table th {
+  background: #1e293b;
+  color: #e0f2fe;
+}
+.result-table .ok {
+  color: #22c55e;
+  font-weight: bold;
+}
+.result-table .fail {
+  color: #ef4444;
+  font-weight: bold;
+}
+
 footer {
     text-align: center;
     margin-top: 40px;
