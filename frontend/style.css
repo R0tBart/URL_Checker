@@ -84,7 +84,7 @@ h1 {
     align-items: center;
 }
 
-#urls {
+#urlInput {
     background: rgba(23, 42, 69, 0.8);
     color: #f8fafc;
     border: 1px solid #1e40af;
@@ -95,8 +95,8 @@ h1 {
     transition: all 0.3s ease;
 }
 
-#urls:hover,
-#urls:focus {
+#urlInput:hover,
+#urlInput:focus {
     background: rgba(30, 58, 110, 0.9);
     outline: none;
     border-color: #3b82f6;
@@ -162,8 +162,30 @@ button:active {
 footer {
     text-align: center;
     margin-top: 40px;
-    color: #94a3b8;
+    color: #b5b8bd;
     font-size: 14px;
     position: relative;
     z-index: 1;
+}
+
+
+#urls {
+    width: 100%;
+    max-width: 100vw;
+    min-width: 100%;
+    box-sizing: border-box;
+    background: rgba(23, 42, 69, 0.8);
+    color: #f8fafc;
+    border: 2px solid #1e40af;
+    padding: 18px 20px;
+    font-size: 1.2rem;
+    border-radius: 8px;
+    transition: all 0.3s;
+    resize: vertical;
+}
+#urls:focus {
+    border-color: #3b82f6;
+    background: rgba(30, 58, 110, 0.9);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
 }
