@@ -38,7 +38,7 @@ body::after {
     width: 90vw;
     height: 90vh;
     max-width: 800px;
-    background-image: url('image/layer8_version2.png');
+    background-image: url('image/layer8_v2.png');
     background-repeat: no-repeat;
     background-position: center;
     background-size: contain;
@@ -149,7 +149,7 @@ button:active {
     border: 1px solid rgba(59, 130, 246, 0.3);
     border-radius: 4px;
     background: rgba(23, 42, 69, 0.8);
-    color: #f8fafc;
+    color: #ecf4fc;
     margin-top: 10px;
 }
 
@@ -185,6 +185,13 @@ button:active {
 .result-table .fail {
   color: #ef4444;
   font-weight: bold;
+}
+
+#result-buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 24px;
 }
 
 footer {
