@@ -66,6 +66,278 @@ function renderField(key, value) {
     }
 }
 
+function exportKurzberichtPDF(tableHeaders, tableData) {
+    if (!Array.isArray(tableHeaders) || !Array.isArray(tableData) || tableHeaders.length === 0 || tableData.length === 0) {
+        alert('Keine Daten zum Exportieren vorhanden!');
+        return;
+    }
+    // Entferne Virustotal-Link/Permalink, fasse Virus-Check als Ergebnistext und Symbol zusammen
+    const filteredHeaders = tableHeaders.filter(h => h.toLowerCase() !== 'permalink' && h.toLowerCase() !== 'url' && h.toLowerCase() !== 'virustotal');
+    // Füge die URL als erste Spalte wieder hinzu, aber ohne Permalink
+    if(tableHeaders.includes('URL')) filteredHeaders.unshift('URL');
+    // Virus-Check grafisch und als Text (z.B. "OK"/"Gefunden")
+    const bodyData = tableData.map(row => {
+        return filteredHeaders.map(h => {
+            if(h.toLowerCase() === 'virus_check' && row[h]) {
+                // Wert ist z.B. "OK" oder "Gefunden"
+                if(row[h].toLowerCase().includes('ok')) {
+                    return '✔️ OK';
+                } else if(row[h].toLowerCase().includes('gefunden') || row[h].toLowerCase().includes('found')) {
+                    return '❌ Gefunden';
+                } else {
+                    return row[h];
+                }
+            }
+            return row[h] || '';
+        });
+    });
+    // Querformat, wenn mehr als 5 Spalten
+    const orientation = filteredHeaders.length > 5 ? 'landscape' : 'portrait';
+    const doc = new window.jspdf.jsPDF({orientation, unit: 'pt', format: 'a4'});
+    // Titel
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(34, 60, 120);
+    doc.text('URL Checker Bericht', 40, 50);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 80);
+    doc.text('Erstellt am: ' + new Date().toLocaleString(), 40, 70);
+    // Tabelle
+    doc.autoTable({
+        startY: 90,
+        head: [filteredHeaders],
+        body: bodyData,
+        styles: {
+            font: 'helvetica',
+            fontSize: 8.5,
+            cellPadding: 3.5,
+            overflow: 'linebreak',
+            valign: 'middle',
+            textColor: [34, 34, 34],
+            lineColor: [120, 160, 220],
+            lineWidth: 0.5,
+            minCellHeight: 12,
+        },
+        headStyles: {
+            fillColor: [34, 60, 120],
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 9.5,
+            halign: 'center',
+            valign: 'middle',
+        },
+        alternateRowStyles: { fillColor: [235, 242, 255] },
+        margin: { left: 20, right: 20 },
+        tableLineColor: [120, 160, 220],
+        tableLineWidth: 0.5,
+        didDrawPage: function (data) {
+            // Footer
+            doc.setFontSize(9);
+            doc.setTextColor(120);
+            doc.text('© Layer8 Security', data.settings.margin.left, doc.internal.pageSize.height - 10);
+            const pageSize = doc.internal.pageSize;
+            const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
+            doc.text('Seite ' + doc.internal.getNumberOfPages(), pageSize.width - 60, pageHeight - 10);
+        },
+        columnStyles: Object.fromEntries(filteredHeaders.map((h, i) => [i, {cellWidth: 'auto', minCellWidth: 40, maxCellWidth: 90, halign: 'left'}])),
+        pageBreak: 'auto',
+        useCss: true,
+        theme: 'grid',
+        showHead: 'everyPage',
+    });
+    doc.save('bericht.pdf');
+}
+
+let originalResults = [];
+
+function exportNetzwerkUndVirusPDFCSV(results, exportType) {
+    if (!Array.isArray(results) || results.length === 0) {
+        alert('Keine Daten für den Export gefunden!');
+        return;
+    }
+    // Mapping für menschenlesbare Spaltennamen
+    const headerMap = {
+        url: 'URL',
+        status_code: 'Statuscode',
+        response_time: 'Antwortzeit (ms)',
+        ssl_valid: 'SSL gültig',
+        redirect: 'Weiterleitung',
+        ip: 'IP-Adresse',
+        info: 'Info',
+        status: 'Status',
+        error: 'Fehler',
+        'headers: content-type': 'Content-Type',
+        'headers: server': 'Server',
+        'virus_check: harmless': 'VirusTotal: Harmlos',
+        'virus_check: malicious': 'VirusTotal: Bösartig',
+        'virus_check: suspicious': 'VirusTotal: Verdächtig',
+        'virus_check: undetected': 'VirusTotal: Unentdeckt',
+        'virus_check: timeout': 'VirusTotal: Timeout',
+        'virus_check: stats': 'VirusTotal: Stats',
+        'virus_check: error': 'VirusTotal: Fehler',
+        'virus_check: suspicious': 'VirusTotal: Verdächtig',
+        'virus_check: harmless': 'VirusTotal: Harmlos',
+        'virus_check: undetected': 'VirusTotal: Unentdeckt',
+        'virus_check: timeout': 'VirusTotal: Timeout',
+        'virus_check: malicious': 'VirusTotal: Bösartig',
+        // weitere Mappings nach Bedarf
+    };
+    // Alle Keys aus dem ersten Ergebnis, außer 'permalink' (und ggf. weitere Links)
+    const allKeys = Object.keys(results[0] || {}).filter(k => k.toLowerCase() !== 'permalink');
+    // Für verschachtelte Objekte (z.B. virus_check.stats, headers) flache Darstellung
+    let expandedHeaders = [];
+    results.forEach(row => {
+        allKeys.forEach(k => {
+            const v = row[k];
+            if (v && typeof v === 'object' && !Array.isArray(v)) {
+                Object.keys(v).forEach(subKey => {
+                    const header = k + ': ' + subKey;
+                    if (!expandedHeaders.includes(header)) expandedHeaders.push(header);
+                });
+            } else {
+                if (!expandedHeaders.includes(k)) expandedHeaders.push(k);
+            }
+        });
+    });
+    // Entferne alle Spalten, die mit VirusTotal/Virus_check zu tun haben, sowie 'content-type' und 'server' (auch als verschachtelte Header)
+    const filteredHeaders = expandedHeaders.filter(h =>
+        !/^virus_check/i.test(h) &&
+        !/^virus_check:/i.test(h) &&
+        h !== 'content-type' &&
+        h !== 'server' &&
+        h !== 'headers: content-type' &&
+        h !== 'headers: server'
+    );
+
+    // Nur EINE VirusTotal-Status-Spalte hinzufügen
+    const filteredHeadersWithVT = [...filteredHeaders, 'virustotal_status'];
+
+    const filteredData = results.map(row => {
+        const rowData = filteredHeaders.map(h => {
+            if (h.includes(': ')) {
+                const [main, sub] = h.split(': ');
+                const v = row[main];
+                if (v && typeof v === 'object' && v[sub] !== undefined) return v[sub];
+                return '';
+            } else {
+                return row[h] !== undefined ? row[h] : '';
+            }
+        });
+        // VirusTotal-Status bestimmen
+        let vtStatus = '';
+        if (row.virus_check && (row.virus_check.malicious !== undefined || row.virus_check.malicious === false)) {
+            vtStatus = row.virus_check.malicious ? 'Schädlich' : 'Nicht schädlich';
+        }
+        rowData.push(vtStatus);
+        return rowData;
+    });
+    // Menschenlesbare Header
+    const readableHeaders = filteredHeadersWithVT.map(h => {
+        if (h === 'virustotal_status') return 'VirusTotal Status';
+        return headerMap[h] || h.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    });
+    if (filteredHeaders.length === 0) {
+        alert('Keine passenden Daten für den Export gefunden!');
+        return;
+    }
+    // Tabellen in 6er-Gruppen aufteilen, inklusive VirusTotal-Status-Spalte am Ende
+    const chunkSize = 6;
+    const headerChunks = [];
+    const totalCols = filteredHeadersWithVT.length;
+    for (let i = 0; i < totalCols; i += chunkSize) {
+        headerChunks.push({
+            headers: filteredHeadersWithVT.slice(i, i + chunkSize),
+            readable: readableHeaders.slice(i, i + chunkSize)
+        });
+    }
+    const dataChunks = headerChunks.map(chunk =>
+        filteredData.map(row => chunk.headers.map((_, idx) => row[idx + headerChunks[0].headers.length * headerChunks.indexOf(chunk)]))
+    );
+    if (exportType === 'pdf') {
+        // Dynamische Schriftgröße je nach Spaltenanzahl
+        function getFontSize(numCols) {
+            if (numCols <= 6) return 11;
+            if (numCols <= 8) return 9.5;
+            if (numCols <= 10) return 8.5;
+            return 7.5;
+        }
+        const doc = new window.jspdf.jsPDF({orientation: 'portrait', unit: 'pt', format: 'a4'});
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(20);
+        doc.setTextColor(34, 60, 120);
+        doc.text('URL Checker Export', 40, 50);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 80, 80);
+        doc.text('Erstellt am: ' + new Date().toLocaleString(), 40, 70);
+        let startY = 90;
+        dataChunks.forEach((body, idx) => {
+            const numCols = headerChunks[idx].headers.length;
+            doc.autoTable({
+                startY: startY,
+                head: [headerChunks[idx].readable],
+                body: body,
+                styles: {
+                    font: 'helvetica',
+                    fontSize: getFontSize(numCols),
+                    cellPadding: numCols > 8 ? 3 : 6,
+                    overflow: 'ellipsize',
+                    valign: 'middle',
+                    textColor: [34, 34, 34],
+                    lineColor: [120, 160, 220],
+                    lineWidth: 0.6,
+                    minCellHeight: 16,
+                },
+                headStyles: {
+                    fillColor: [34, 60, 120],
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    fontSize: Math.max(getFontSize(numCols), 9),
+                    halign: 'center',
+                    valign: 'middle',
+                },
+                alternateRowStyles: { fillColor: [235, 242, 255] },
+                margin: { left: 20, right: 20 },
+                tableLineColor: [120, 160, 220],
+                tableLineWidth: 0.6,
+                didDrawPage: function (data) {
+                    doc.setFontSize(10);
+                    doc.setTextColor(120);
+                    doc.text('© Layer8 Security', data.settings.margin.left, doc.internal.pageSize.height - 10);
+                    const pageSize = doc.internal.pageSize;
+                    const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
+                    doc.text('Seite ' + doc.internal.getNumberOfPages(), pageSize.width - 60, pageHeight - 10);
+                },
+                columnStyles: Object.fromEntries(headerChunks[idx].headers.map((h, i) => [i, {cellWidth: 'auto', minCellWidth: 60, maxCellWidth: 200, halign: 'left'}])),
+                pageBreak: 'auto',
+                useCss: true,
+                theme: 'grid',
+                showHead: 'everyPage',
+            });
+            startY = doc.lastAutoTable.finalY + 30;
+        });
+        doc.save('urlchecker_export.pdf');
+    } else if (exportType === 'csv') {
+        let csv = [];
+        headerChunks.forEach(chunk => {
+            csv.push(chunk.readable.join(';'));
+            filteredData.forEach(row => {
+                csv.push(chunk.headers.map((h, idx) => {
+                    const colIdx = filteredHeaders.indexOf(h);
+                    return `"${(row[colIdx]||'').toString().replace(/"/g, '""')}"`;
+                }).join(';'));
+            });
+            csv.push(''); // Leerzeile zwischen den Tabellen
+        });
+        const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'urlchecker_export.csv';
+        link.click();
+    }
+}
+
 document.getElementById('urlForm').addEventListener('submit', async function (e) {
     e.preventDefault();
 
@@ -88,6 +360,7 @@ document.getElementById('urlForm').addEventListener('submit', async function (e)
 
         const data = await response.json();
         const results = Array.isArray(data.results) ? data.results : [];
+        originalResults = results;
 
         // Wenn keine Ergebnisse, trotzdem alle URLs anzeigen
         const displayResults = results.length > 0
@@ -120,105 +393,135 @@ document.getElementById('urlForm').addEventListener('submit', async function (e)
 
         // Screenshot-Button
         document.getElementById('screenshotBtn').onclick = function() {
-            const resultCards = document.querySelector('.result-cards');
-            html2canvas(resultCards, {backgroundColor: "#fff", scale: 2}).then(canvas => {
+            // Temporäre Tabelle für Screenshot erzeugen
+            const container = document.createElement('div');
+            container.style.background = '#fff';
+            container.style.padding = '24px';
+            container.style.borderRadius = '10px';
+            container.style.boxShadow = '0 4px 24px rgba(0,0,0,0.08)';
+            container.style.maxWidth = '1200px';
+            container.style.margin = '0 auto';
+            container.style.color = '#222';
+            container.style.fontFamily = 'Segoe UI, Arial, sans-serif';
+            container.style.fontSize = '15px';
+
+            // Daten für Tabelle holen (wie Export)
+            const results = originalResults;
+            // Header und Daten wie im Export
+            const headerMap = {
+                url: 'URL',
+                status_code: 'Statuscode',
+                response_time: 'Antwortzeit (ms)',
+                ssl_valid: 'SSL gültig',
+                redirect: 'Weiterleitung',
+                ip: 'IP-Adresse',
+                info: 'Info',
+                status: 'Status',
+                error: 'Fehler',
+            };
+            let expandedHeaders = [];
+            if (results.length > 0) {
+                const allKeys = Object.keys(results[0] || {}).filter(k => k.toLowerCase() !== 'permalink');
+                results.forEach(row => {
+                    allKeys.forEach(k => {
+                        const v = row[k];
+                        if (v && typeof v === 'object' && !Array.isArray(v)) {
+                            Object.keys(v).forEach(subKey => {
+                                const header = k + ': ' + subKey;
+                                if (!expandedHeaders.includes(header)) expandedHeaders.push(header);
+                            });
+                        } else {
+                            if (!expandedHeaders.includes(k)) expandedHeaders.push(k);
+                        }
+                    });
+                });
+            }
+            // Filter wie im Export
+            const filteredHeaders = expandedHeaders.filter(h =>
+                !/^virus_check/i.test(h) &&
+                !/^virus_check:/i.test(h) &&
+                h !== 'content-type' &&
+                h !== 'server' &&
+                h !== 'headers: content-type' &&
+                h !== 'headers: server'
+            );
+            const filteredHeadersWithVT = [...filteredHeaders, 'virustotal_status'];
+            const readableHeaders = filteredHeadersWithVT.map(h => {
+                if (h === 'virustotal_status') return 'VirusTotal Status';
+                return headerMap[h] || h.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            });
+            const filteredData = results.map(row => {
+                const rowData = filteredHeaders.map(h => {
+                    if (h.includes(': ')) {
+                        const [main, sub] = h.split(': ');
+                        const v = row[main];
+                        if (v && typeof v === 'object' && v[sub] !== undefined) return v[sub];
+                        return '';
+                    } else {
+                        return row[h] !== undefined ? row[h] : '';
+                    }
+                });
+                let vtStatus = '';
+                if (row.virus_check && (row.virus_check.malicious !== undefined || row.virus_check.malicious === false)) {
+                    vtStatus = row.virus_check.malicious ? 'Schädlich' : 'Nicht schädlich';
+                }
+                rowData.push(vtStatus);
+                return rowData;
+            });
+            // Tabelle erzeugen
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+            table.style.background = '#fff';
+            table.style.margin = '0 auto 16px auto';
+            table.style.fontSize = '15px';
+            table.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+            // Kopfzeile
+            const thead = document.createElement('thead');
+            const trHead = document.createElement('tr');
+            readableHeaders.forEach(h => {
+                const th = document.createElement('th');
+                th.textContent = h;
+                th.style.background = '#223c78';
+                th.style.color = '#fff';
+                th.style.padding = '8px 10px';
+                th.style.border = '1px solid #3b82f6';
+                th.style.fontWeight = 'bold';
+                th.style.textAlign = 'left';
+                trHead.appendChild(th);
+            });
+            thead.appendChild(trHead);
+            table.appendChild(thead);
+            // Datenzeilen
+            const tbody = document.createElement('tbody');
+            filteredData.forEach(row => {
+                const tr = document.createElement('tr');
+                row.forEach(cell => {
+                    const td = document.createElement('td');
+                    td.textContent = cell;
+                    td.style.padding = '7px 10px';
+                    td.style.border = '1px solid #3b82f6';
+                    td.style.background = '#f4f8ff';
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            container.appendChild(table);
+            document.body.appendChild(container);
+            html2canvas(container, {backgroundColor: '#fff', scale: 2}).then(canvas => {
                 const link = document.createElement('a');
                 link.download = 'screenshot.png';
                 link.href = canvas.toDataURL();
                 link.click();
+                document.body.removeChild(container);
             });
         };
 
         // Exportieren-Button
         document.getElementById('exportBtn').onclick = function() {
             const exportType = document.getElementById('exportType').value;
-            // Daten für Tabelle sammeln
-            let tableHeaders = [];
-            let tableData = [];
-            document.querySelectorAll('.result-card').forEach((card, idx) => {
-                let row = {};
-                card.querySelectorAll('div').forEach(div => {
-                    const label = div.querySelector('strong') ? div.querySelector('strong').innerText.replace(':','') : '';
-                    const value = div.querySelector('a') ? div.querySelector('a').innerText : (div.innerText.split(':')[1] || '').trim();
-                    if(label) {
-                        row[label] = value;
-                        if(idx === 0 && !tableHeaders.includes(label)) tableHeaders.push(label);
-                    }
-                });
-                if(Object.keys(row).length) tableData.push(row);
-            });
-
-            if (exportType === 'pdf') {
-                const doc = new window.jspdf.jsPDF({orientation: 'landscape', unit: 'pt', format: 'a4'});
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(28);
-                doc.text('URL Checker Ergebnis', 40, 60);
-                doc.setFontSize(15);
-                doc.setFont('helvetica', 'normal');
-                doc.text('Erstellt am: ' + new Date().toLocaleString(), 40, 90);
-
-                doc.autoTable({
-    startY: 120,
-    head: [tableHeaders],
-    body: tableData.map(row => tableHeaders.map(h => row[h] || '')),
-    styles: {
-        font: 'helvetica',
-        fontSize: 13,
-        cellPadding: 8,
-        overflow: 'linebreak',
-        valign: 'middle',
-        textColor: [34, 34, 34],
-        lineColor: [180, 180, 180],
-        lineWidth: 0.5,
-        minCellHeight: 24,
-    },
-    headStyles: {
-        fillColor: [44, 62, 80],
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
-        fontSize: 14,
-    },
-    alternateRowStyles: { fillColor: [240, 245, 255] },
-    margin: { left: 40, right: 40 },
-    tableLineColor: [180, 180, 180],
-    tableLineWidth: 0.75,
-    didDrawPage: function (data) {
-        doc.setFontSize(11);
-        doc.setTextColor(120);
-        doc.text('© Layer8 Security', data.settings.margin.left, doc.internal.pageSize.height - 10);
-    },
-    // Automatische Spaltenbreite und Seitenumbruch
-    columnStyles: {
-        0: { cellWidth: 'auto' },
-        1: { cellWidth: 'auto' },
-        2: { cellWidth: 'auto' },
-        3: { cellWidth: 'auto' },
-        4: { cellWidth: 'auto' },
-        5: { cellWidth: 'auto' },
-        6: { cellWidth: 'auto' },
-        7: { cellWidth: 'auto' },
-        8: { cellWidth: 'auto' },
-        9: { cellWidth: 'auto' },
-        // ... falls du mehr Spalten hast, erweitere hier
-    },
-    pageBreak: 'auto',
-    useCss: true
-});
-
-                doc.save('result.pdf');
-            } else if (exportType === 'csv') {
-                let csv = [];
-                csv.push(tableHeaders.join(';'));
-                tableData.forEach(row => {
-                    csv.push(tableHeaders.map(h => `"${(row[h]||'').replace(/"/g, '""')}"`).join(';'));
-                });
-
-                const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = 'result.csv';
-                link.click();
-            }
+            exportNetzwerkUndVirusPDFCSV(originalResults, exportType);
         };
     } catch (err) {
         // Bei komplettem Verbindungsfehler alle URLs als Fehler anzeigen
@@ -255,76 +558,7 @@ document.getElementById('urlForm').addEventListener('submit', async function (e)
         };
 
         document.getElementById('exportBtn').onclick = function() {
-            const exportType = document.getElementById('exportType').value;
-            let tableHeaders = [];
-            let tableData = [];
-            document.querySelectorAll('.result-card').forEach((card, idx) => {
-                let row = {};
-                card.querySelectorAll('div').forEach(div => {
-                    const label = div.querySelector('strong') ? div.querySelector('strong').innerText.replace(':','') : '';
-                    const value = div.querySelector('a') ? div.querySelector('a').innerText : (div.innerText.split(':')[1] || '').trim();
-                    if(label) {
-                        row[label] = value;
-                        if(idx === 0 && !tableHeaders.includes(label)) tableHeaders.push(label);
-                    }
-                });
-                if(Object.keys(row).length) tableData.push(row);
-            });
-
-            if (exportType === 'pdf') {
-                const doc = new window.jspdf.jsPDF({orientation: 'landscape', unit: 'pt', format: 'a4'});
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(28);
-                doc.text('URL Checker Ergebnis', 40, 60);
-                doc.setFontSize(15);
-                doc.setFont('helvetica', 'normal');
-                doc.text('Erstellt am: ' + new Date().toLocaleString(), 40, 90);
-
-                doc.autoTable({
-                    startY: 120,
-                    head: [tableHeaders],
-                    body: tableData.map(row => tableHeaders.map(h => row[h] || '')),
-                    styles: {
-                        font: 'helvetica',
-                        fontSize: 16,
-                        cellPadding: 12,
-                        overflow: 'linebreak',
-                        valign: 'middle',
-                        textColor: [30, 30, 30],
-                        lineColor: [120, 120, 120],
-                        lineWidth: 1.2,
-                    },
-                    headStyles: {
-                        fillColor: [44, 62, 80],
-                        textColor: [255, 255, 255],
-                        fontStyle: 'bold',
-                        fontSize: 17,
-                    },
-                    alternateRowStyles: { fillColor: [230, 240, 255] },
-                    margin: { left: 40, right: 40 },
-                    tableLineColor: [120, 120, 120],
-                    tableLineWidth: 1.2,
-                    didDrawPage: function (data) {
-                        doc.setFontSize(12);
-                        doc.setTextColor(120);
-                        doc.text('© Layer8 Security', data.settings.margin.left, doc.internal.pageSize.height - 10);
-                    }
-                });
-
-                doc.save('result.pdf');
-            } else if (exportType === 'csv') {
-                let csv = [];
-                csv.push(tableHeaders.join(';'));
-                tableData.forEach(row => {
-                    csv.push(tableHeaders.map(h => `"${(row[h]||'').replace(/"/g, '""')}"`).join(';'));
-                });
-
-                const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = 'result.csv';
-                link.click();
-            }
+            // Exportfunktion entfernt – kein Export mehr möglich
         };
     }
 });
