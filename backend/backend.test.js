@@ -10,8 +10,13 @@ const { checkUrl } = require('./utils');
 // Die Express-App wird aus index.js importiert, damit die Tests direkt gegen die laufende App ausgeführt werden können.
 // Voraussetzung: In index.js muss 'module.exports = app;' am Ende stehen.
 let app;
-beforeAll(() => {
-  app = require('./index'); // Importiert die App-Instanz für die Tests
+let server;
+beforeAll((done) => {
+  app = require('./index');
+  server = app.listen(0, done); // Starte auf zufälligem freien Port
+});
+afterAll((done) => {
+  server.close(done);
 });
 
 // Test-Suite für den /check-urls-Endpunkt
@@ -28,7 +33,7 @@ describe('API /check-urls', () => {
     expect(res.body.error).toMatch(/darf nicht leer sein/i);
   });
 
-  test('gibt Fehler bei fehlendem Feld „urls“ zurück', async () => {
+  test('gibt Fehler bei fehlendem Feld "urls" zurück', async () => {
     // Erwartet: Fehler 400, wenn das Feld "urls" fehlt
     const res = await request(app)
       .post('/check-urls')

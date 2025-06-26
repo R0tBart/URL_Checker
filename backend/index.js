@@ -110,13 +110,13 @@ app.get('/screenshot', async (req, res) => {
   }
 });
 
-
-// Startet den Server und gibt die wichtigsten URLs in der Konsole aus
-// ===============================
-app.listen(PORT, () => {
-  console.log(`🚀 Server läuft auf http://localhost:${PORT}`);
-  console.log(`📊 Gesundheitscheck: http://localhost:${PORT}/health`);
-});
+// Starte den Server nur, wenn die Datei direkt ausgeführt wird
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server läuft auf http://localhost:${PORT}`);
+    console.log(`📊 Gesundheitscheck: http://localhost:${PORT}/health`);
+  });
+}
 
 // ===============================
 // Fehlerbehandlung für alle nicht existierenden Endpunkte (404)
@@ -144,7 +144,6 @@ process.on('SIGTERM', () => {
   process.exit(0);
 });
 
-
-// Exportiert die App-Instanz für Tests und externe Nutzung
+// Exportiere die App-Instanz für Tests und externe Nutzung
 module.exports = app;
 
