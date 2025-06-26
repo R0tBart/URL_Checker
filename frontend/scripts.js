@@ -401,14 +401,58 @@ document.getElementById('urlForm').addEventListener('submit', async function (e)
 
         // Screenshot-Button
         document.getElementById('screenshotBtn').onclick = function() {
-            const resultCards = document.querySelector('.result-cards');
-            html2canvas(resultCards, {backgroundColor: "#fff", scale: 2}).then(canvas => {
-                const link = document.createElement('a');
-                link.download = 'screenshot.png';
-                link.href = canvas.toDataURL();
-                link.click();
-            });
-        };
+    const resultCards = document.querySelector('.result-cards');
+    // Merke alte Styles
+    const oldBg = resultCards.style.background;
+    const oldColor = resultCards.style.color;
+    const oldFontSize = resultCards.style.fontSize;
+    const oldPadding = resultCards.style.padding;
+    const oldBorderRadius = resultCards.style.borderRadius;
+    const oldBoxShadow = resultCards.style.boxShadow;
+
+    // Setze "Export-Styles" wie PDF
+    resultCards.style.background = "#fff";
+    resultCards.style.color = "#222";
+    resultCards.style.fontSize = "1.15em";
+    resultCards.style.padding = "32px";
+    resultCards.style.borderRadius = "10px";
+    resultCards.style.boxShadow = "0 2px 12px rgba(0,0,0,0.08)";
+
+    // Tabellenzellen und Überschriften anpassen
+    resultCards.querySelectorAll('.result-card').forEach(card => {
+        card.style.background = "#f8fafc";
+        card.style.color = "#222";
+        card.style.borderLeft = "6px solid #3b82f6";
+        card.style.marginBottom = "24px";
+        card.style.fontSize = "1.08em";
+        card.style.padding = "18px";
+        card.style.borderRadius = "8px";
+    });
+
+    html2canvas(resultCards, {backgroundColor: "#fff", scale: 2}).then(canvas => {
+        // Styles zurücksetzen
+        resultCards.style.background = oldBg;
+        resultCards.style.color = oldColor;
+        resultCards.style.fontSize = oldFontSize;
+        resultCards.style.padding = oldPadding;
+        resultCards.style.borderRadius = oldBorderRadius;
+        resultCards.style.boxShadow = oldBoxShadow;
+        resultCards.querySelectorAll('.result-card').forEach(card => {
+            card.style.background = "";
+            card.style.color = "";
+            card.style.borderLeft = "";
+            card.style.marginBottom = "";
+            card.style.fontSize = "";
+            card.style.padding = "";
+            card.style.borderRadius = "";
+        });
+
+        const link = document.createElement('a');
+        link.download = 'screenshot.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    });
+};
 
         // Exportieren-Button
         document.getElementById('exportBtn').onclick = function() {
