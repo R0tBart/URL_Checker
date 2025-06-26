@@ -8,17 +8,17 @@
 require('dotenv').config(); // Für Zugriff auf .env
 
 // Importiert alle benötigten Node.js-Module für HTTP-Anfragen, DNS-Auflösung, SSL-Prüfung und Zeitmessung
-const axios = require('axios');
-const dns = require('dns').promises;
-const tls = require('tls');
-const { URL } = require('url');
-const { performance } = require('perf_hooks');
-const fs = require('fs');
-const path = require('path');
-const { chromium } = require('playwright');
+const axios = require('axios'); // Für HTTP-Anfragen, wie z.B. GET- und POST-Anfragen
+const dns = require('dns').promises; // Für DNS-Auflösung, um die IP-Adresse einer Domain zu ermitteln
+const tls = require('tls'); // Für SSL-Prüfung, um die Gültigkeit von SSL-Zertifikaten zu überprüfen
+const { URL } = require('url'); // Für die Analyse von URLs und deren Komponenten 
+const { performance } = require('perf_hooks'); // Für Zeitmessung, um die Ausführungszeit von Funktionen zu messen 
+const fs = require('fs'); // Für Dateioperationen, wie z.B. das Lesen von Dateien 
+const path = require('path'); // Für das Arbeiten mit Dateipfaden und -namen
+const { chromium } = require('playwright'); // Für das automatisierte Browser testen und die Analyse von Webseiten
 
 // Liest den API-Key für VirusTotal aus den Umgebungsvariablen
-const virusTotalApiKey = process.env.VIRUSTOTAL_API_KEY;
+const virusTotalApiKey = process.env.VIRUSTOTAL_API_KEY; // API-Key für VirusTotal
 
 
 // ===============================
@@ -27,22 +27,22 @@ const virusTotalApiKey = process.env.VIRUSTOTAL_API_KEY;
 // Rückgabe: Objekt mit Analyse-Statistiken, Link zum Bericht oder Fehler
 // ===============================
 
-async function checkUrlVirusTotal(url) {
+async function checkUrlVirusTotal(url) { 
   try {
     const encodedUrl = Buffer.from(url).toString('base64').replace(/=+$/, '');
-    const res = await axios.get(`https://www.virustotal.com/api/v3/urls/${encodedUrl}`, {
-      headers: { 'x-apikey': virusTotalApiKey }
+    const res = await axios.get(`https://www.virustotal.com/api/v3/urls/${encodedUrl}`, { // API-Anfrage an VirusTotal
+      headers: { 'x-apikey': virusTotalApiKey } 
     });
-    const stats = res.data.data.attributes.last_analysis_stats;
+    const stats = res.data.data.attributes.last_analysis_stats; // Auswertung der letzten Sicherheitsprüfungen
     return {
       malicious: stats.malicious,
       suspicious: stats.suspicious,
       stats,
-      permalink: `https://www.virustotal.com/gui/url/${encodedUrl}/detection`
+      permalink: `https://www.virustotal.com/gui/url/${encodedUrl}/detection` 
     };
-  } catch (err) {
+  } catch (err) { // Fehlerbehandlung für Fälle, in denen die API-Anfrage fehlschlägt
     console.warn(`VirusTotal-Fehler für ${url}:`, err.message);
-    return { error: err.message };
+    return { error: err.message }; // Fehlermeldung, falls die API-Anfrage fehlschlägt
   }
 }
 
@@ -259,4 +259,4 @@ module.exports = {
   exportCsv,
   getGeoIp,
   takeScreenshot
- };
+};
