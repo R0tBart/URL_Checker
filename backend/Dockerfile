@@ -4,7 +4,6 @@ FROM mcr.microsoft.com/playwright:v1.44.0-jammy
 
 WORKDIR /app
 
-# Nur lokale Dateien aus backend/, daher einfach COPY . .
 COPY package*.json ./
 RUN npm install
 
