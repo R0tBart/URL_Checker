@@ -1,3 +1,11 @@
+function normalizeUrl(input) {
+    let url = input.trim();
+    if (!/^https?:\/\//i.test(url)) {
+        url = 'https://' + url;
+    }
+    return url;
+}
+
 function renderField(key, value) {
     // Diese Felder fett und unterstrichen
     const highlight = ['url', 'headers', 'virus_check', 'stats'];
@@ -344,7 +352,7 @@ document.getElementById('urlForm').addEventListener('submit', async function (e)
     const urlsInput = document.getElementById('urls').value;
     const urls = urlsInput
         .split('\n')
-        .map(url => url.trim())
+        .map(url => normalizeUrl(url))
         .filter(url => url.length > 0);
 
     const resultBox = document.getElementById('result');
@@ -393,128 +401,12 @@ document.getElementById('urlForm').addEventListener('submit', async function (e)
 
         // Screenshot-Button
         document.getElementById('screenshotBtn').onclick = function() {
-            // Temporäre Tabelle für Screenshot erzeugen
-            const container = document.createElement('div');
-            container.style.background = '#fff';
-            container.style.padding = '24px';
-            container.style.borderRadius = '10px';
-            container.style.boxShadow = '0 4px 24px rgba(0,0,0,0.08)';
-            container.style.maxWidth = '1200px';
-            container.style.margin = '0 auto';
-            container.style.color = '#222';
-            container.style.fontFamily = 'Segoe UI, Arial, sans-serif';
-            container.style.fontSize = '15px';
-
-            // Daten für Tabelle holen (wie Export)
-            const results = originalResults;
-            // Header und Daten wie im Export
-            const headerMap = {
-                url: 'URL',
-                status_code: 'Statuscode',
-                response_time: 'Antwortzeit (ms)',
-                ssl_valid: 'SSL gültig',
-                redirect: 'Weiterleitung',
-                ip: 'IP-Adresse',
-                info: 'Info',
-                status: 'Status',
-                error: 'Fehler',
-            };
-            let expandedHeaders = [];
-            if (results.length > 0) {
-                const allKeys = Object.keys(results[0] || {}).filter(k => k.toLowerCase() !== 'permalink');
-                results.forEach(row => {
-                    allKeys.forEach(k => {
-                        const v = row[k];
-                        if (v && typeof v === 'object' && !Array.isArray(v)) {
-                            Object.keys(v).forEach(subKey => {
-                                const header = k + ': ' + subKey;
-                                if (!expandedHeaders.includes(header)) expandedHeaders.push(header);
-                            });
-                        } else {
-                            if (!expandedHeaders.includes(k)) expandedHeaders.push(k);
-                        }
-                    });
-                });
-            }
-            // Filter wie im Export
-            const filteredHeaders = expandedHeaders.filter(h =>
-                !/^virus_check/i.test(h) &&
-                !/^virus_check:/i.test(h) &&
-                h !== 'content-type' &&
-                h !== 'server' &&
-                h !== 'headers: content-type' &&
-                h !== 'headers: server'
-            );
-            const filteredHeadersWithVT = [...filteredHeaders, 'virustotal_status'];
-            const readableHeaders = filteredHeadersWithVT.map(h => {
-                if (h === 'virustotal_status') return 'VirusTotal Status';
-                return headerMap[h] || h.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            });
-            const filteredData = results.map(row => {
-                const rowData = filteredHeaders.map(h => {
-                    if (h.includes(': ')) {
-                        const [main, sub] = h.split(': ');
-                        const v = row[main];
-                        if (v && typeof v === 'object' && v[sub] !== undefined) return v[sub];
-                        return '';
-                    } else {
-                        return row[h] !== undefined ? row[h] : '';
-                    }
-                });
-                let vtStatus = '';
-                if (row.virus_check && (row.virus_check.malicious !== undefined || row.virus_check.malicious === false)) {
-                    vtStatus = row.virus_check.malicious ? 'Schädlich' : 'Nicht schädlich';
-                }
-                rowData.push(vtStatus);
-                return rowData;
-            });
-            // Tabelle erzeugen
-            const table = document.createElement('table');
-            table.style.width = '100%';
-            table.style.borderCollapse = 'collapse';
-            table.style.background = '#fff';
-            table.style.margin = '0 auto 16px auto';
-            table.style.fontSize = '15px';
-            table.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
-            // Kopfzeile
-            const thead = document.createElement('thead');
-            const trHead = document.createElement('tr');
-            readableHeaders.forEach(h => {
-                const th = document.createElement('th');
-                th.textContent = h;
-                th.style.background = '#223c78';
-                th.style.color = '#fff';
-                th.style.padding = '8px 10px';
-                th.style.border = '1px solid #3b82f6';
-                th.style.fontWeight = 'bold';
-                th.style.textAlign = 'left';
-                trHead.appendChild(th);
-            });
-            thead.appendChild(trHead);
-            table.appendChild(thead);
-            // Datenzeilen
-            const tbody = document.createElement('tbody');
-            filteredData.forEach(row => {
-                const tr = document.createElement('tr');
-                row.forEach(cell => {
-                    const td = document.createElement('td');
-                    td.textContent = cell;
-                    td.style.padding = '7px 10px';
-                    td.style.border = '1px solid #3b82f6';
-                    td.style.background = '#f4f8ff';
-                    tr.appendChild(td);
-                });
-                tbody.appendChild(tr);
-            });
-            table.appendChild(tbody);
-            container.appendChild(table);
-            document.body.appendChild(container);
-            html2canvas(container, {backgroundColor: '#fff', scale: 2}).then(canvas => {
+            const resultCards = document.querySelector('.result-cards');
+            html2canvas(resultCards, {backgroundColor: "#fff", scale: 2}).then(canvas => {
                 const link = document.createElement('a');
                 link.download = 'screenshot.png';
                 link.href = canvas.toDataURL();
                 link.click();
-                document.body.removeChild(container);
             });
         };
 
@@ -546,7 +438,7 @@ document.getElementById('urlForm').addEventListener('submit', async function (e)
         `;
         resultBox.classList.add('has-content');
 
-        // Die gleichen Event-Handler wie oben!
+        // Screenshot-Button
         document.getElementById('screenshotBtn').onclick = function() {
             const resultCards = document.querySelector('.result-cards');
             html2canvas(resultCards, {backgroundColor: "#fff", scale: 2}).then(canvas => {
@@ -557,8 +449,76 @@ document.getElementById('urlForm').addEventListener('submit', async function (e)
             });
         };
 
+        // Exportieren-Button (Fehlerfall)
         document.getElementById('exportBtn').onclick = function() {
-            // Exportfunktion entfernt – kein Export mehr möglich
+            const exportType = document.getElementById('exportType').value;
+            // Fehlerdaten aus der Anzeige sammeln
+            let tableHeaders = ['URL', 'Status', 'Info'];
+            let tableData = [];
+            document.querySelectorAll('.result-card').forEach(card => {
+                let row = {};
+                card.querySelectorAll('div').forEach(div => {
+                    const label = div.querySelector('strong') ? div.querySelector('strong').innerText.replace(':','') : '';
+                    const value = div.querySelector('a') ? div.querySelector('a').innerText : (div.innerText.split(':')[1] || '').trim();
+                    if(label) row[label] = value;
+                });
+                if(Object.keys(row).length) tableData.push(row);
+            });
+
+            if (exportType === 'pdf') {
+                const doc = new window.jspdf.jsPDF({orientation: 'landscape', unit: 'pt', format: 'a4'});
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(28);
+                doc.text('URL Checker Fehlerbericht', 40, 60);
+                doc.setFontSize(15);
+                doc.setFont('helvetica', 'normal');
+                doc.text('Erstellt am: ' + new Date().toLocaleString(), 40, 90);
+
+                doc.autoTable({
+                    startY: 120,
+                    head: [tableHeaders],
+                    body: tableData.map(row => tableHeaders.map(h => row[h] || '')),
+                    styles: {
+                        font: 'helvetica',
+                        fontSize: 16,
+                        cellPadding: 12,
+                        overflow: 'linebreak',
+                        valign: 'middle',
+                        textColor: [30, 30, 30],
+                        lineColor: [120, 120, 120],
+                        lineWidth: 1.2,
+                    },
+                    headStyles: {
+                        fillColor: [44, 62, 80],
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold',
+                        fontSize: 17,
+                    },
+                    alternateRowStyles: { fillColor: [230, 240, 255] },
+                    margin: { left: 40, right: 40 },
+                    tableLineColor: [120, 120, 120],
+                    tableLineWidth: 1.2,
+                    didDrawPage: function (data) {
+                        doc.setFontSize(12);
+                        doc.setTextColor(120);
+                        doc.text('© Layer8 Security', data.settings.margin.left, doc.internal.pageSize.height - 10);
+                    }
+                });
+
+                doc.save('fehlerbericht.pdf');
+            } else if (exportType === 'csv') {
+                let csv = [];
+                csv.push(tableHeaders.join(';'));
+                tableData.forEach(row => {
+                    csv.push(tableHeaders.map(h => `"${(row[h]||'').replace(/"/g, '""')}"`).join(';'));
+                });
+
+                const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'fehlerbericht.csv';
+                link.click();
+            }
         };
     }
 });
