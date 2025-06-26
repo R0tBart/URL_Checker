@@ -1,0 +1,25 @@
+name: CI Build & Test
+
+# Ausführung bei jedem Push oder Pull Request nach main
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repository klonen
+        uses: actions/checkout@v3
+
+      - name: Docker Backend Image bauen
+        run: docker build -t urlchecker-backend ./backend
+
+      - name: Docker Frontend Image bauen
+        run: docker build -t urlchecker-frontend ./frontend
+
+      - name: Backend Container Test (Startprobe)
+        run: docker run --rm -d -p 8000:8000 urlchecker-backend
