@@ -64,20 +64,3 @@ jobs:
           tags: ${{ steps.meta_frontend.outputs.tags }}
           labels: ${{ steps.meta_frontend.outputs.labels }}
 
-  deploy:
-    needs: build_and_test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Auf Server deployen (Beispiel)
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT || 22 }}
-          script: |
-            cd /pfad/zum/URL_Checker
-            docker-compose pull
-            docker-compose up -d --remove-orphans
-            docker image prune -f
