@@ -1,25 +1,83 @@
-name: CI Build & Test
+name: CI/CD für URL-Checker
 
 # Ausführung bei jedem Push oder Pull Request nach main
 on:
   push:
-    branches: [main]
+    branches: [ "main" ]
   pull_request:
-    branches: [main]
+    branches: [ "main" ]
 
 jobs:
-  build:
+  build_and_test:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Repository klonen
-        uses: actions/checkout@v3
+      - name: Code auschecken
+        uses: actions/checkout@v4
 
-      - name: Docker Backend Image bauen
-        run: docker build -t urlchecker-backend ./backend
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
 
-      - name: Docker Frontend Image bauen
-        run: docker build -t urlchecker-frontend ./frontend
+      - name: Backend-Abhängigkeiten installieren
+        working-directory: ./backend
+        run: npm install
 
-      - name: Backend Container Test (Startprobe)
-        run: docker run --rm -d -p 8000:8000 urlchecker-backend
+      - name: Backend-Tests ausführen
+        working-directory: ./backend
+        run: npm test
+
+      - name: Bei Docker Hub anmelden
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Docker-Metadaten für Backend extrahieren
+        id: meta_backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/url-checker-backend
+
+      - name: Docker-Metadaten für Frontend extrahieren
+        id: meta_frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/url-checker-frontend
+
+      - name: Backend-Image bauen und pushen
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.meta_backend.outputs.tags }}
+          labels: ${{ steps.meta_backend.outputs.labels }}
+
+      - name: Frontend-Image bauen und pushen
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.meta_frontend.outputs.tags }}
+          labels: ${{ steps.meta_frontend.outputs.labels }}
+
+  deploy:
+    needs: build_and_test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auf Server deployen (Beispiel)
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT || 22 }}
+          script: |
+            cd /pfad/zum/URL_Checker
+            docker-compose pull
+            docker-compose up -d --remove-orphans
+            docker image prune -f
