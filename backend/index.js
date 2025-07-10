@@ -126,3 +126,5 @@ if (require.main === module) {
     console.log(`📊 Gesundheitscheck: http://localhost:${PORT}/health`);
   });
 }
+
+module.exports = app;
