@@ -4,7 +4,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "80:8000"   # Port-Mapping für Beanstalk/ALB angepasst
     volumes:
       - ./backend:/app
     environment:

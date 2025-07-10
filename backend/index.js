@@ -7,6 +7,7 @@
 // und die Hilfsfunktion checkUrl aus der utils.js für die URL-Prüfung
 const express = require('express');
 const { checkUrl, getStats, exportCsv, getGeoIp, takeScreenshot } = require('./utils');
+const path = require('path');
 
 const app = express();
 // Bestimmt den Port, auf dem der Server läuft (aus Umgebungsvariablen oder Standard 8000)
@@ -32,6 +33,14 @@ app.use((req, res, next) => {
 // Middleware: Aktiviert das automatische Parsen von JSON-Daten im Request-Body
 // ===============================
 app.use(express.json());
+
+// Statische Dateien aus dem Public-Ordner ausliefern
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Fallback: index.html für Single-Page-Apps (optional, falls Routing im Frontend)
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/index.html'));
+});
 
 // ===============================
 // Gesundheitscheck-Endpunkt
@@ -117,33 +126,3 @@ if (require.main === module) {
     console.log(`📊 Gesundheitscheck: http://localhost:${PORT}/health`);
   });
 }
-
-// ===============================
-// Fehlerbehandlung für alle nicht existierenden Endpunkte (404)
-// Wird aufgerufen, wenn keine andere Route passt
-// ===============================
-app.use((req, res, next) => {
-  res.status(404).json({ error: 'Endpunkt nicht gefunden' });
-});
-
-// ===============================
-// Globale Fehlerbehandlung für unerwartete Fehler im Server
-// Gibt immer einen generischen Fehlertext zurück, damit keine sensiblen Infos nach außen gelangen
-// ===============================
-app.use((error, req, res, next) => {
-  console.error('Unbehandelter Fehler:', error);
-  res.status(500).json({ error: 'Interner Serverfehler' });
-});
-
-// ===============================
-// Behandelt das SIGTERM-Signal (z.B. bei Herunterfahren des Servers durch das Betriebssystem)
-// Sorgt für ein sauberes Beenden des Prozesses
-// ===============================
-process.on('SIGTERM', () => {
-  console.log('Server wird heruntergefahren...');
-  process.exit(0);
-});
-
-// Exportiere die App-Instanz für Tests und externe Nutzung
-module.exports = app;
-
