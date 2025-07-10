@@ -1,13 +1,15 @@
-# Dockerfile für das Node.js-Backend mit Playwright
-
-FROM mcr.microsoft.com/playwright:v1.44.0-jammy
+# Production Dockerfile für Node.js Backend mit statischem Frontend
+FROM node:20-alpine
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci --omit=dev
 
 COPY . .
 
-EXPOSE 8000
+# Port für das Backend (kann per ENV überschrieben werden)
+EXPOSE 8080
+ENV PORT=8080
+
 CMD ["node", "index.js"]

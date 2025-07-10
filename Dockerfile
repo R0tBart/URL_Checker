@@ -1,8 +1,14 @@
-# Dockerfile für statisches HTML/CSS/JS-Frontend mit nginx
-FROM nginx:alpine
+# Dockerfile für das gesamte Projekt (Backend + statisches Frontend)
+FROM node:20-alpine
 
-# Kopiere die statischen Dateien ins nginx-Webroot
-COPY ./frontend /usr/share/nginx/html
+WORKDIR /app
 
-# Port 80 freigeben (Standard für HTTP)
-EXPOSE 80
+COPY backend/package*.json ./
+RUN npm ci --omit=dev
+
+COPY backend/. .
+
+EXPOSE 8080
+ENV PORT=8080
+
+CMD ["node", "index.js"]

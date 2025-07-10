@@ -17,11 +17,11 @@ jobs:
       - name: Node.js einrichten
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
       - name: Backend-Abhängigkeiten installieren
         working-directory: ./backend
-        run: npm install
+        run: npm ci
 
       - name: Backend-Tests ausführen
         working-directory: ./backend
@@ -34,32 +34,17 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Docker-Metadaten für Backend extrahieren
-        id: meta_backend
+      - name: Docker-Metadaten extrahieren
+        id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/url-checker-backend
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/url-checker
 
-      - name: Docker-Metadaten für Frontend extrahieren
-        id: meta_frontend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/url-checker-frontend
-
-      - name: Backend-Image bauen und pushen
+      - name: Docker-Image bauen und pushen
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
-          file: ./backend/Dockerfile
+          context: .
+          file: ./Dockerfile
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          tags: ${{ steps.meta_backend.outputs.tags }}
-          labels: ${{ steps.meta_backend.outputs.labels }}
-
-      - name: Frontend-Image bauen und pushen
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          tags: ${{ steps.meta_frontend.outputs.tags }}
-          labels: ${{ steps.meta_frontend.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
